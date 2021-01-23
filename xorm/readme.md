@@ -8,6 +8,8 @@
 ```text
 xorm.IXormComponent         组件接口
 xorm.NewXorm                创建xorm组件
+
+c.GetXorm(name ...string)           获取xorm引擎
 ``` 
 
 # 配置
