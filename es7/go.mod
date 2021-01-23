@@ -1,4 +1,4 @@
-module github.com/zly-app/es7-plugin
+module github.com/zly-app/component/es7
 
 go 1.15
 
