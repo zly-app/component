@@ -3,6 +3,15 @@
 
 > 提供用于 https://github.com/zly-app/zapp 的组件插件
 
+# 说明
+
+> 组件的使用基本按照以下顺序
+
+1. 定义一个类继承 `core.IComponent`, 将想要使用的组件接口也写在这个类里面
+2. 这个类重写组件的 `Close()` 方法, 在这里关闭所有使用的组件
+3. 在 `zapp.NewApp` 时使用 `zapp.WithCustomComponent` 选项, 提供函数返回这个类的实例指针
+4. 在任何地方使用时, 将 app.GetComponent() 的结果直接类型转换为这个类的指针
+
 # 以xorm组件插件示例
 
 ```go
