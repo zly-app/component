@@ -162,7 +162,7 @@ func (g *GrpcClient) makeConn(name, scheme, balance string, timeout int) (*grpc.
 		timeout = DefaultDialTimeout
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Millisecond)
+	ctx, cancel := context.WithTimeout(g.app.BaseContext(), time.Duration(timeout)*time.Millisecond)
 	defer cancel()
 
 	return grpc.DialContext(ctx,
