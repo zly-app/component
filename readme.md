@@ -1,7 +1,7 @@
 
-# 组件插件
+# 组件
 
-> 提供用于 https://github.com/zly-app/zapp 的组件插件
+> 提供用于 https://github.com/zly-app/zapp 的组件
 
 # 说明
 
@@ -12,7 +12,7 @@
 3. 在 `zapp.NewApp` 时使用 `zapp.WithCustomComponent` 选项, 提供函数返回这个类的实例指针
 4. 在任何地方使用时, 将 app.GetComponent() 的结果直接类型转换为这个类的指针
 
-# 以xorm组件插件示例
+# 以xorm组件示例
 
 ```go
 package main

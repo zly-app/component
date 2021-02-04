@@ -1,7 +1,7 @@
 
-# es7客户端组件插件
+# es7客户端组件
 
-> 提供用于 https://github.com/zly-app/zapp 的组件插件
+> 提供用于 https://github.com/zly-app/zapp 的组件
 
 # 说明
 

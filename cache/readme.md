@@ -1,7 +1,7 @@
 
-# cache组件插件
+# cache组件
 
-> 提供用于 https://github.com/zly-app/zapp 的组件插件
+> 提供用于 https://github.com/zly-app/zapp 的组件
 
 # 说明
 
