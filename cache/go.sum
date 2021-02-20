@@ -229,10 +229,10 @@ github.com/vmihailenco/msgpack/v5 v5.1.0/go.mod h1:C5gboKD0TJPqWDTVTtrQNfRbiBwHZ
 github.com/vmihailenco/tagparser v0.1.2 h1:gnjoVuB/kljJ5wICEEOpx98oXMWPLj22G67Vbd1qPqc=
 github.com/vmihailenco/tagparser v0.1.2/go.mod h1:OeAg3pn3UbLjkWt+rN9oFYB6u/cQgqMEUPoW2WPyhdI=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
-github.com/zly-app/zapp v1.0.2 h1:8Yp7WXA5bhS5uhDQH1AI2BHTOtM9+QuQoSMIRfR9/Ek=
-github.com/zly-app/zapp v1.0.2/go.mod h1:Z5V+S/+OakHkuPKzwbU5zf5Om2Ryh2TCG2eKb1U2VTk=
-github.com/zlyuancn/zcache v1.0.1 h1:oGV6/AO52D1jZ83+Snh14cVEcgqZ+DwTYUwcEh8OyWM=
-github.com/zlyuancn/zcache v1.0.1/go.mod h1:y3VjZ9IUH47ilLLNs7fhCqYd2J46XdL25IjfO+/G99Y=
+github.com/zly-app/zapp v1.0.5 h1:1mp6fFvJFS290Sbkql8lIbPlcexCDnhNghkiFQTYvP0=
+github.com/zly-app/zapp v1.0.5/go.mod h1:Z5V+S/+OakHkuPKzwbU5zf5Om2Ryh2TCG2eKb1U2VTk=
+github.com/zlyuancn/zcache v1.0.2 h1:bBYHGH94kO4ExXE7Cm4JDnDkQShdGKFJ5lH0Szp6ees=
+github.com/zlyuancn/zcache v1.0.2/go.mod h1:y3VjZ9IUH47ilLLNs7fhCqYd2J46XdL25IjfO+/G99Y=
 go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=
