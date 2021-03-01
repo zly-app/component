@@ -18,8 +18,6 @@ import (
 const DefaultComponentType core.ComponentType = "nsq-producer"
 
 const (
-	// 默认心跳间隔
-	defaultHeartbeatInterval = 30000
 	// 默认读取超时
 	defaultReadTimeout = 30000
 	// 默认写入超时
@@ -31,7 +29,6 @@ const (
 type NsqProducerConfig struct {
 	Address           string // 地址: localhost:4150
 	AuthSecret        string // 验证秘钥
-	HeartbeatInterval int64  // 心跳间隔(毫秒), 不能超过ReadTimeout, 0表示无
 	ReadTimeout       int64  // 超时(毫秒
 	WriteTimeout      int64  // 超时(毫秒
 	DialTimeout       int64  // 超时(毫秒
@@ -41,7 +38,6 @@ func newConfig() *NsqProducerConfig {
 	return &NsqProducerConfig{
 		Address:           "",
 		AuthSecret:        "",
-		HeartbeatInterval: defaultHeartbeatInterval,
 		ReadTimeout:       defaultReadTimeout,
 		WriteTimeout:      defaultWriteTimeout,
 		DialTimeout:       defaultDialTimeout,
@@ -49,9 +45,6 @@ func newConfig() *NsqProducerConfig {
 }
 
 func (conf *NsqProducerConfig) Check() error {
-	if conf.HeartbeatInterval <= 0 {
-		conf.HeartbeatInterval = -1
-	}
 	if conf.ReadTimeout <= 0 {
 		conf.ReadTimeout = defaultReadTimeout
 	}
