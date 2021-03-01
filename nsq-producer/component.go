@@ -55,14 +55,13 @@ func (r *NsqProducer) GetNsqProducer(name ...string) *nsq.Producer {
 }
 
 func (r *NsqProducer) makeClient(name string) (conn.IInstance, error) {
-	var conf NsqProducerConfig
-	err := r.app.GetConfig().ParseComponentConfig(r.componentType, name, &conf)
+	conf := newConfig()
+	err := r.app.GetConfig().ParseComponentConfig(r.componentType, name, conf)
 	if err != nil {
 		return nil, err
 	}
-
-	if conf.Address == "" {
-		return nil, fmt.Errorf("%s的address为空", r.componentType)
+	if err = conf.Check(); err != nil {
+		return nil, fmt.Errorf("组件%s的配置错误: %s", r.componentType, err)
 	}
 
 	nsqConf := nsq.NewConfig()
