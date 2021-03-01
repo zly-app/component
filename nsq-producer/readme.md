@@ -20,6 +20,7 @@ c.GetNsqProducer(name ...string)            获取nsq生产者
 [components.nsq-producer.default]
 Address="localhost:4150"                # 地址: localhost:4150
 AuthSecret=""                           # 验证秘钥
+HeartbeatInterval=30000                 # 心跳间隔(毫秒), 不能超过ReadTimeout
 ReadTimeout=30000                       # 超时(毫秒
 WriteTimeout=5000                       # 超时(毫秒
 DialTimeout=2000                        # 超时(毫秒

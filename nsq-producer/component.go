@@ -66,6 +66,7 @@ func (r *NsqProducer) makeClient(name string) (conn.IInstance, error) {
 
 	nsqConf := nsq.NewConfig()
 	nsqConf.AuthSecret = conf.AuthSecret
+	nsqConf.HeartbeatInterval = time.Duration(conf.HeartbeatInterval) * time.Millisecond
 	nsqConf.ReadTimeout = time.Duration(conf.ReadTimeout) * time.Millisecond
 	nsqConf.WriteTimeout = time.Duration(conf.WriteTimeout) * time.Millisecond
 	nsqConf.DialTimeout = time.Duration(conf.DialTimeout) * time.Millisecond
