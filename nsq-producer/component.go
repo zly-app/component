@@ -72,7 +72,7 @@ func (r *NsqProducer) makeClient(name string) (conn.IInstance, error) {
 	nsqConf.DialTimeout = time.Duration(conf.DialTimeout) * time.Millisecond
 
 	producer, err := nsq.NewProducer(conf.Address, nsq.NewConfig())
-	return &instance{producer}, nil
+	return &instance{producer}, err
 }
 
 func (r *NsqProducer) Close() {
