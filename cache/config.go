@@ -38,5 +38,6 @@ type CacheConfig struct {
 		ReadTimeout  int64  // 读取超时(毫秒
 		WriteTimeout int64  // 写入超时(毫秒
 		DialTimeout  int64  // 连接超时(毫秒
+		DoTimeout    int64  // 操作超时
 	}
 }

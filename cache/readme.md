@@ -43,11 +43,11 @@ func main() {
 
 	c := app.GetComponent().(*Component).GetCache()
 
-	err := c.Set(zcache.NewQuery("test", "k1"), "hello")
+	err := c.Save("test", "hello", 0, zcache.QC().Args("k1"))
 	app.Info("保存", zap.Error(err))
 
 	var s string
-	err = c.Get(zcache.NewQuery("test", "k1"), &s)
+	err = c.Query("test", &s, zcache.QC().Args("k1"))
 	app.Info("获取", zap.String("s", s), zap.Error(err))
 }
 ```

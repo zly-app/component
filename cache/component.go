@@ -164,5 +164,6 @@ func makeRedisCacheDB(conf *CacheConfig) cache_core.ICacheDB {
 
 	return redis_cache.NewRedisCache(client,
 		redis_cache.WithKeyPrefix(conf.RedisCacheDB.KeyPrefix),
+		redis_cache.WithDoTimeout(time.Duration(conf.RedisCacheDB.DoTimeout)*time.Millisecond),
 	)
 }
