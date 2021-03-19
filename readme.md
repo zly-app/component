@@ -1,4 +1,3 @@
-
 # 组件
 
 > 提供用于 https://github.com/zly-app/zapp 的组件
@@ -32,6 +31,7 @@ type Component struct {
 
 // 重写Close()
 func (c *Component) Close() {
+	c.IComponent.Close()
 	c.IXormComponent.Close()
 	// ... 关闭其他组件, 一般为 c.IXXXComponent.Close()
 }
