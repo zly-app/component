@@ -114,7 +114,7 @@ func (g *GrpcClient) RegistryGrpcClientCreator(name string, creator interface{})
 	}
 
 	arg0 := createType.In(0)
-	if arg0.AssignableTo(typeOfGrpcClientConn) && !arg0.AssignableTo(typeOfGrpcClientConnInterface) {
+	if !arg0.AssignableTo(typeOfGrpcClientConn) && !arg0.AssignableTo(typeOfGrpcClientConnInterface) {
 		logger.Log.Fatal("grpc客户端建造者入参类型必须是 *grpc.ClientConn 或 grpc.ClientConnInterface")
 		return
 	}
