@@ -9,6 +9,7 @@
 package xorm
 
 import (
+	"strings"
 	"time"
 
 	_ "github.com/denisenkom/go-mssqldb" // mssql
@@ -16,6 +17,7 @@ import (
 	_ "github.com/lib/pq"                // postgres
 	_ "github.com/mattn/go-sqlite3"      // sqlite
 	"xorm.io/xorm"
+	"xorm.io/xorm/names"
 
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/core"
@@ -73,7 +75,22 @@ func (x *Xorm) makeClient(name string) (conn.IInstance, error) {
 	e.SetMaxIdleConns(conf.MaxIdleConns)
 	e.SetMaxOpenConns(conf.MaxOpenConns)
 	e.SetConnMaxLifetime(time.Duration(conf.ConnMaxLifetime) * time.Millisecond)
+
+	e.SetTableMapper(x.makeNameMapper(conf.TableMapperRule))
+	e.SetColumnMapper(x.makeNameMapper(conf.ColumnMapperRule))
 	return &instance{e}, nil
+}
+
+func (x *Xorm) makeNameMapper(rule string) names.Mapper {
+	switch strings.ToLower(rule) {
+	case "SnakeMapper":
+		return names.SnakeMapper{}
+	case "SameMapper":
+		return names.SameMapper{}
+	case "GonicMapper":
+		return names.GonicMapper{}
+	}
+	return names.GonicMapper{}
 }
 
 func (x *Xorm) Close() {
