@@ -26,7 +26,7 @@ import (
 )
 
 var typeOfGrpcClientConn = reflect.TypeOf((*grpc.ClientConn)(nil))
-var typeOfGrpcClientConnInterface = reflect.TypeOf((grpc.ClientConnInterface)((*grpc.ClientConn)(nil)))
+var typeOfGrpcClientConnInterface = reflect.TypeOf((*grpc.ClientConnInterface)(nil)).Elem()
 
 type IGrpcClientComponent interface {
 	// 注册grpc客户端创造者, 这个方法应该在app.Run之前调用
