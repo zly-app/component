@@ -29,7 +29,7 @@ type Xorm struct {
 	componentType core.ComponentType
 }
 
-type IXormComponent interface {
+type IXorm interface {
 	// 获取
 	GetXorm(name ...string) *xorm.Engine
 	// 释放
@@ -45,7 +45,7 @@ func (i *instance) Close() {
 }
 
 // 创建xorm组件
-func NewXorm(app core.IApp, componentType ...core.ComponentType) IXormComponent {
+func NewXorm(app core.IApp, componentType ...core.ComponentType) IXorm {
 	x := &Xorm{
 		app:           app,
 		conn:          conn.NewConn(),

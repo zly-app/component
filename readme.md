@@ -24,15 +24,15 @@ import (
 
 // 定义自己的组件
 type Component struct {
-	core.IComponent     // 保留原始组件
-	xorm.IXormComponent // 继承xorm组件
+	core.IComponent // 保留原始组件
+	xorm.IXorm      // 继承xorm组件
 	// ... 其他组件, 一般为 type.IXXXComponent
 }
 
 // 重写Close()
 func (c *Component) Close() {
 	c.IComponent.Close()
-	c.IXormComponent.Close()
+	c.IXorm.Close()
 	// ... 关闭其他组件, 一般为 c.IXXXComponent.Close()
 }
 
@@ -40,8 +40,8 @@ func main() {
 	app := zapp.NewApp("test",
 		zapp.WithCustomComponent(func(app core.IApp) core.IComponent { // 自定义返回自己的组件
 			return &Component{
-				IComponent:     app.GetComponent(), // 设置原始组件
-				IXormComponent: xorm.NewXorm(app),  // 设置xorm组件
+				IComponent: app.GetComponent(), // 设置原始组件
+				IXorm:      xorm.NewXorm(app),  // 设置xorm组件
 				// ... 设置其他组件, 一般为 IXXXComponent: type.NewXXX(app)
 			}
 		}),

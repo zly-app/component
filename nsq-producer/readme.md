@@ -5,8 +5,10 @@
 
 # 说明
 
+> 此组件基于模块 [github.com/nsqio/go-nsq](https://github.com/nsqio/go-nsq)
+
 ```text
-nsq_producer.INsqProducerComponent          组件接口
+nsq_producer.INsqProducer                   组件接口
 nsq_producer.NewNsqProducer                 创建nsq生产者组件
 
 c.GetNsqProducer(name ...string)            获取nsq生产者

@@ -6,7 +6,7 @@
 # 说明
 
 ```text
-grpc_client.IGrpcClientComponent        组件接口
+grpc_client.IGrpcClient                 组件接口
 grpc_client.NewGrpcClient               创建grpc客户端组件
 
 c.RegistryGrpcClientCreator             注册grpc客户端创造者

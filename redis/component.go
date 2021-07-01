@@ -18,7 +18,7 @@ import (
 	"github.com/zly-app/zapp/core"
 )
 
-type IRedisComponent interface {
+type IRedis interface {
 	// 获取redis客户端
 	GetRedis(name ...string) redis.UniversalClient
 	// 关闭
@@ -39,7 +39,7 @@ type Redis struct {
 	componentType core.ComponentType
 }
 
-func NewRedis(app core.IApp, componentType ...core.ComponentType) IRedisComponent {
+func NewRedis(app core.IApp, componentType ...core.ComponentType) IRedis {
 	r := &Redis{
 		app:           app,
 		conn:          conn.NewConn(),

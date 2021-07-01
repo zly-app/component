@@ -4,8 +4,10 @@
 
 # 说明
 
+> 此组件基于模块 [xorm.io/xorm](https://gitea.com/xorm/xorm)
+
 ```text
-xorm.IXormComponent         组件接口
+xorm.IXorm                  组件接口
 xorm.NewXorm                创建xorm组件
 
 c.GetXorm(name ...string)           获取xorm引擎

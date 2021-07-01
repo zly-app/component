@@ -28,7 +28,7 @@ import (
 var typeOfGrpcClientConn = reflect.TypeOf((*grpc.ClientConn)(nil))
 var typeOfGrpcClientConnInterface = reflect.TypeOf((*grpc.ClientConnInterface)(nil)).Elem()
 
-type IGrpcClientComponent interface {
+type IGrpcClient interface {
 	// 注册grpc客户端创造者, 这个方法应该在app.Run之前调用
 	//
 	// creator 必须实现 func (cc *grpc.ClientConn) Any 或 func(cc grpc.ClientConnInterface) Any
@@ -59,7 +59,7 @@ type GrpcClient struct {
 	creatorMap map[string]reflect.Value
 }
 
-func NewGrpcClient(app core.IApp, componentType ...core.ComponentType) IGrpcClientComponent {
+func NewGrpcClient(app core.IApp, componentType ...core.ComponentType) IGrpcClient {
 	g := &GrpcClient{
 		app:           app,
 		conn:          conn.NewConn(),

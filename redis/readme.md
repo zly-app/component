@@ -5,8 +5,10 @@
 
 # 说明
 
+> 此组件基于模块 [github.com/go-redis/redis/v8](https://github.com/go-redis/redis)
+
 ```text
-redis.IRedisComponent       组件接口
+redis.IRedis                组件接口
 redis.NewRedis              创建redis组件
 
 c.GetRedis(name ...string)          获取redis客户端

@@ -5,8 +5,10 @@
 
 # 说明
 
+> 此组件基于模块 [github.com/olivere/elastic/v7](https://github.com/olivere/elastic)
+
 ```text
-es7.IES7Component           组件接口
+es7.IES7                    组件接口
 es7.NewES7                  创建es7组件
 
 c.GetES7(name ...string)            获取es7客户端

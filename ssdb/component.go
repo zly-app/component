@@ -16,7 +16,7 @@ import (
 	"github.com/zly-app/zapp/core"
 )
 
-type ISsdbComponent interface {
+type ISsdb interface {
 	// 获取客户端, 使用完后记得关闭
 	GetSsdb(name ...string) *pool.Client
 	// 关闭
@@ -38,7 +38,7 @@ type Ssdb struct {
 }
 
 // 创建ssdb组件
-func NewSsdb(app core.IApp, componentType ...core.ComponentType) ISsdbComponent {
+func NewSsdb(app core.IApp, componentType ...core.ComponentType) ISsdb {
 	s := &Ssdb{
 		app:           app,
 		conn:          conn.NewConn(),

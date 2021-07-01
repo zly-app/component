@@ -19,7 +19,7 @@ import (
 	"github.com/zly-app/zapp/core"
 )
 
-type IES7Component interface {
+type IES7 interface {
 	// 获取es7客户端
 	GetES7(name ...string) *elastic7.Client
 	// 关闭
@@ -41,7 +41,7 @@ type ES7 struct {
 }
 
 // 创建es7组件
-func NewES7(app core.IApp, componentType ...core.ComponentType) IES7Component {
+func NewES7(app core.IApp, componentType ...core.ComponentType) IES7 {
 	e := &ES7{
 		app:           app,
 		conn:          conn.NewConn(),

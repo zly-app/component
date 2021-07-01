@@ -5,8 +5,10 @@
 
 # 说明
 
+> 此组件基于模块 [github.com/seefan/gossdb](https://github.com/seefan/gossdb)
+
 ```text
-ssdb.ISsdbComponent         组件接口
+ssdb.ISsdb                  组件接口
 ssdb.NewSsdb                创建ssdb组件
 
 c.GetSsdb(name ...string)   获取客户端, 使用完后记得关闭

@@ -17,7 +17,7 @@ import (
 	"github.com/zly-app/zapp/core"
 )
 
-type INsqProducerComponent interface {
+type INsqProducer interface {
 	// 获取nsq发布者
 	GetNsqProducer(name ...string) *nsq.Producer
 	// 关闭
@@ -38,7 +38,7 @@ type NsqProducer struct {
 	componentType core.ComponentType
 }
 
-func NewNsqProducer(app core.IApp, componentType ...core.ComponentType) INsqProducerComponent {
+func NewNsqProducer(app core.IApp, componentType ...core.ComponentType) INsqProducer {
 	n := &NsqProducer{
 		app:           app,
 		conn:          conn.NewConn(),
