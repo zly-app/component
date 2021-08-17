@@ -9,9 +9,9 @@
 package ssdb
 
 import (
-	"github.com/seefan/gossdb"
-	rconf "github.com/seefan/gossdb/conf"
-	"github.com/seefan/gossdb/pool"
+	"github.com/seefan/gossdb/v2"
+	rconf "github.com/seefan/gossdb/v2/conf"
+	"github.com/seefan/gossdb/v2/pool"
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/core"
 )

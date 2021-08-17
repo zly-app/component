@@ -5,7 +5,7 @@
 
 # 说明
 
-> 此组件基于模块 [github.com/seefan/gossdb](https://github.com/seefan/gossdb)
+> 此组件基于模块 [github.com/seefan/gossdb/v2](https://github.com/seefan/gossdb)
 
 ```text
 ssdb.ISsdb                  组件接口
