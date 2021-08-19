@@ -44,7 +44,7 @@ type Config struct {
 	MaxMessageBytes         int    // 消息的最大允许大小(字节)
 	Compression             string // 压缩类型, none, gzip, snappy, lz4, zstd
 	CompressionLevel        int    // 压缩级别, 根据编码不同具有不同的区间, 默认为不同编码默认级别
-	EnabledSuccessesChannel bool   // 启用Successes通道, 如果启用, 必须循环从这个通道读取数据以防止死锁. 该选项仅异步生产者有效(默认关闭)
+	EnabledSuccessesChannel bool   // 启用Successes通道, 如果启用, 必须循环从这个通道读取数据以防止死锁. 该选项仅异步生产者有效(默认启用)
 	EnabledErrorsChannel    bool   // 启用Errors通道, 如果启用, 必须循环从这个通道读取数据以防止死锁. 该选项仅异步生产者有效(默认启用)
 	RetryCount              int    // 发送失败重试次数
 	RetryInterval           int    // 发送失败重试间隔时间(毫秒)
