@@ -95,10 +95,14 @@ func (k *KafkaProducer) makeConf(name string) (*Config, error) {
 	kConf.Producer.Return.Successes = conf.EnabledSuccessesChannel // 如果启用了该选项，交付成功的消息将在Successes通道上返回
 	kConf.Producer.Return.Errors = conf.EnabledErrorsChannel       // 如果启用了该选项，未交付的消息将在Errors通道上返回，包括error
 
-	kConf.Producer.Retry.Max = conf.SendRetryCount
-	kConf.Producer.Retry.Backoff = time.Duration(conf.SendRetryInterval) * time.Millisecond
+	kConf.Producer.Retry.Max = conf.RetryCount
+	kConf.Producer.Retry.Backoff = time.Duration(conf.RetryInterval) * time.Millisecond
 
 	kConf.ChannelBufferSize = conf.ChannelBufferSize
+	if strings.HasPrefix(conf.KafkaVersion, "v") {
+		conf.KafkaVersion = conf.KafkaVersion[1:]
+	}
+	kConf.Version, _ = sarama.ParseKafkaVersion(conf.KafkaVersion)
 
 	conf.kConf = kConf
 	return conf, nil
