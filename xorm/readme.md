@@ -24,3 +24,10 @@ Driver = "sqllite3"
 # 连接源
 Source = "test.db"
 ```
+
+# 驱动支持
+
++ `mysql`
++ `postgres`
++ `sqlite3`
++ `mssql`
