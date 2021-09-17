@@ -31,6 +31,7 @@ import (
 
 type ICache interface {
 	GetCache(name ...string) *zcache.Cache
+	Close()
 }
 
 type Cache struct {
@@ -79,6 +80,12 @@ func (c *Cache) GetCache(name ...string) *zcache.Cache {
 	}
 
 	return cache
+}
+
+func (c *Cache) Close() {
+	for _, cache := range c.caches {
+		_ = cache.Close()
+	}
 }
 
 // 构建编解码器
