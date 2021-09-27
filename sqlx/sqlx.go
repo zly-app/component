@@ -1,6 +1,7 @@
 package sqlx
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -51,10 +52,13 @@ func (s *Sqlx) GetSqlx(name ...string) *sqlx.DB {
 }
 
 func (s *Sqlx) makeClient(name string) (conn.IInstance, error) {
-	var conf SqlxConfig
-	err := s.app.GetConfig().ParseComponentConfig(s.componentType, name, &conf)
+	conf := newConfig()
+	err := s.app.GetConfig().ParseComponentConfig(s.componentType, name, conf)
+	if err == nil {
+		err = conf.Check()
+	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("sqlx的配置错误: %v", err)
 	}
 
 	db, err := sqlx.Open(conf.Driver, conf.Source)
