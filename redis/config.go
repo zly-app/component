@@ -15,6 +15,19 @@ import (
 // 默认组件类型
 const DefaultComponentType core.ComponentType = "redis"
 
+const (
+	// 默认最小空闲连接数
+	defaultMinIdleConns = 1
+	// 默认客户端池大小
+	defaultPoolSize = 1
+	// 默认读取超时
+	defaultReadTimeout = 5000
+	// 默认写入超时
+	defaultWriteTimeout = 5000
+	// 默认连接超时
+	defaultDialTimeout = 5000
+)
+
 // redis配置
 type RedisConfig struct {
 	Address      string // 地址: host1:port1,host2:port2

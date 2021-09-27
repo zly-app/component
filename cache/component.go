@@ -150,7 +150,9 @@ func makeRedisCacheDB(conf *CacheConfig) cache_core.ICacheDB {
 	if conf.RedisCacheDB.IsCluster {
 		client = redis.NewClusterClient(&redis.ClusterOptions{
 			Addrs:        strings.Split(conf.RedisCacheDB.Address, ","),
+			Username:     conf.RedisCacheDB.UserName,
 			Password:     conf.RedisCacheDB.Password,
+			MinIdleConns: conf.RedisCacheDB.MinIdleConns,
 			PoolSize:     conf.RedisCacheDB.PoolSize,
 			ReadTimeout:  time.Duration(conf.RedisCacheDB.ReadTimeout) * time.Millisecond,
 			WriteTimeout: time.Duration(conf.RedisCacheDB.WriteTimeout) * time.Millisecond,
@@ -159,7 +161,9 @@ func makeRedisCacheDB(conf *CacheConfig) cache_core.ICacheDB {
 	} else {
 		client = redis.NewClient(&redis.Options{
 			Addr:         conf.RedisCacheDB.Address,
+			Username:     conf.RedisCacheDB.UserName,
 			Password:     conf.RedisCacheDB.Password,
+			MinIdleConns: conf.RedisCacheDB.MinIdleConns,
 			DB:           conf.RedisCacheDB.DB,
 			PoolSize:     conf.RedisCacheDB.PoolSize,
 			ReadTimeout:  time.Duration(conf.RedisCacheDB.ReadTimeout) * time.Millisecond,
