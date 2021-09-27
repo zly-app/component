@@ -53,11 +53,12 @@ func NewCache(app core.IApp, componentType ...core.ComponentType) ICache {
 
 	caches := make(map[string]*zcache.Cache, len(configs))
 	for name, conf := range configs {
+		conf.Check()
 		cache := zcache.NewCache(
 			zcache.WithCacheDB(makeCacheDB(&conf)),
 			zcache.WithDefaultExpire(time.Duration(conf.DefaultExpire)*time.Millisecond, time.Duration(conf.DefaultExpireMax)*time.Millisecond),
-			zcache.WithDirectReturnOnCacheFault(conf.DirectReturnOnCacheFault),
-			zcache.WithPanicOnLoaderExists(conf.PanicOnLoaderExists),
+			zcache.WithDirectReturnOnCacheFault(*conf.DirectReturnOnCacheFault),
+			zcache.WithPanicOnLoaderExists(*conf.PanicOnLoaderExists),
 			zcache.WithCodec(makeCodec(conf.Codec)),
 			zcache.WithSingleFlight(makeSingleFlight(conf.SingleFlight)),
 			zcache.WithLogger(app.GetLogger()),
@@ -91,8 +92,6 @@ func (c *Cache) Close() {
 // 构建编解码器
 func makeCodec(codecType string) cache_core.ICodec {
 	switch strings.ToLower(codecType) {
-	case "", "default":
-		return cache_codec.DefaultCodec
 	case "byte":
 		return cache_codec.Byte
 	case "json":
@@ -111,7 +110,7 @@ func makeCodec(codecType string) cache_core.ICodec {
 // 构建单跑模块
 func makeSingleFlight(sf string) cache_core.ISingleFlight {
 	switch strings.ToLower(sf) {
-	case "", "default", "single":
+	case "single":
 		return single_sf.NewSingleFlight()
 	case "no":
 		return no_sf.NoSingleFlight()
@@ -123,7 +122,7 @@ func makeSingleFlight(sf string) cache_core.ISingleFlight {
 // 构建缓存db
 func makeCacheDB(conf *CacheConfig) cache_core.ICacheDB {
 	switch strings.ToLower(conf.CacheDB) {
-	case "", "default", "memory":
+	case "memory":
 		return makeMemoryCacheDB(conf)
 	case "redis":
 		return makeRedisCacheDB(conf)
