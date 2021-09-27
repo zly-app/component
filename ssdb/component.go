@@ -9,6 +9,9 @@
 package ssdb
 
 import (
+	"fmt"
+	"net"
+
 	"github.com/seefan/gossdb/v2"
 	rconf "github.com/seefan/gossdb/v2/conf"
 	"github.com/seefan/gossdb/v2/pool"
@@ -55,23 +58,31 @@ func (s *Ssdb) GetSsdb(name ...string) *pool.Client {
 }
 
 func (s *Ssdb) makeClient(name string) (conn.IInstance, error) {
-	var conf SsdbConfig
-	err := s.app.GetConfig().ParseComponentConfig(s.componentType, name, &conf)
+	conf := newSsdbConfig()
+	err := s.app.GetConfig().ParseComponentConfig(s.componentType, name, conf)
+	if err == nil {
+		err = conf.Check()
+	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("ssdb配置错误: %v", err)
+	}
+
+	addr, err := net.ResolveTCPAddr("tcp", conf.Address)
+	if err != nil {
+		return nil, fmt.Errorf("ssdb配置错误, 无法解析addres: %v", err)
 	}
 
 	p, err := gossdb.NewPool(&rconf.Config{
-		Host:             conf.Host,
-		Port:             conf.Port,
+		Host:             addr.IP.String(),
+		Port:             addr.Port,
 		Password:         conf.Password,
 		GetClientTimeout: conf.GetClientTimeout / 1e3,
 		MaxWaitSize:      conf.GetClientWaitQueueSize,
 		ReadTimeout:      conf.ReadTimeout / 1e3,
 		WriteTimeout:     conf.WriteTimeout / 1e3,
 		ConnectTimeout:   conf.DialTimeout / 1e3,
-		MinPoolSize:      conf.MinPoolSize,
-		MaxPoolSize:      conf.MaxPoolSize,
+		MinPoolSize:      conf.MinIdleConns,
+		MaxPoolSize:      conf.PoolSize,
 		RetryEnabled:     conf.RetryEnabled,
 	})
 
