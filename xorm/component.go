@@ -9,6 +9,7 @@
 package xorm
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -62,10 +63,13 @@ func (x *Xorm) GetXorm(name ...string) *xorm.Engine {
 }
 
 func (x *Xorm) makeClient(name string) (conn.IInstance, error) {
-	var conf XormConfig
-	err := x.app.GetConfig().ParseComponentConfig(x.componentType, name, &conf)
+	conf := newConfig()
+	err := x.app.GetConfig().ParseComponentConfig(x.componentType, name, conf)
+	if err == nil {
+		err = conf.Check()
+	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("xorm的配置错误: %v", err)
 	}
 
 	e, err := xorm.NewEngine(conf.Driver, conf.Source)
