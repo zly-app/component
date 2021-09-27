@@ -58,20 +58,19 @@ func (e *ES7) GetES7(name ...string) *elastic7.Client {
 }
 
 func (e *ES7) makeClient(name string) (conn.IInstance, error) {
-	var conf ES7Config
+	conf := newConfig()
 	err := e.app.GetConfig().ParseComponentConfig(e.componentType, name, &conf)
-	if err != nil {
-		return nil, err
+	if err == nil {
+		err = conf.Check()
 	}
-
-	if conf.Address == "" {
-		return nil, fmt.Errorf("%s的address为空", e.componentType)
+	if err != nil {
+		return nil, fmt.Errorf("es7服务配置错误: %v", err)
 	}
 
 	opts := []elastic7.ClientOptionFunc{
 		elastic7.SetURL(strings.Split(conf.Address, ",")...),
 		elastic7.SetSniff(conf.Sniff),
-		elastic7.SetHealthcheck(conf.Healthcheck == nil || *conf.Healthcheck),
+		elastic7.SetHealthcheck(conf.HealthCheck),
 		elastic7.SetGzip(conf.GZip),
 	}
 	if conf.UserName != "" || conf.Password != "" {
