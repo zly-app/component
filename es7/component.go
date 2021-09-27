@@ -59,7 +59,7 @@ func (e *ES7) GetES7(name ...string) *elastic7.Client {
 
 func (e *ES7) makeClient(name string) (conn.IInstance, error) {
 	conf := newConfig()
-	err := e.app.GetConfig().ParseComponentConfig(e.componentType, name, &conf)
+	err := e.app.GetConfig().ParseComponentConfig(e.componentType, name, conf)
 	if err == nil {
 		err = conf.Check()
 	}

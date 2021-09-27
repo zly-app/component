@@ -56,14 +56,13 @@ func (r *Redis) GetRedis(name ...string) redis.UniversalClient {
 }
 
 func (r *Redis) makeClient(name string) (conn.IInstance, error) {
-	var conf RedisConfig
-	err := r.app.GetConfig().ParseComponentConfig(r.componentType, name, &conf)
-	if err != nil {
-		return nil, err
+	conf := newRedisConfig()
+	err := r.app.GetConfig().ParseComponentConfig(r.componentType, name, conf)
+	if err == nil {
+		err = conf.Check()
 	}
-
-	if conf.Address == "" {
-		return nil, fmt.Errorf("%s的address为空", r.componentType)
+	if err != nil {
+		return nil, fmt.Errorf("redis配置错误: %v", err)
 	}
 
 	var client redis.UniversalClient

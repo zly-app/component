@@ -9,6 +9,8 @@
 package redis
 
 import (
+	"errors"
+
 	"github.com/zly-app/zapp/core"
 )
 
@@ -40,4 +42,21 @@ type RedisConfig struct {
 	ReadTimeout  int64  // 超时(毫秒
 	WriteTimeout int64  // 超时(毫秒
 	DialTimeout  int64  // 超时(毫秒
+}
+
+func newRedisConfig() *RedisConfig {
+	return &RedisConfig{
+		MinIdleConns: defaultMinIdleConns,
+		PoolSize:     defaultPoolSize,
+		ReadTimeout:  defaultReadTimeout,
+		WriteTimeout: defaultWriteTimeout,
+		DialTimeout:  defaultDialTimeout,
+	}
+}
+
+func (conf *RedisConfig) Check() error {
+	if conf.Address == "" {
+		return errors.New("redis的address为空")
+	}
+	return nil
 }
