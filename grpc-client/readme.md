@@ -13,6 +13,11 @@ c.RegistryGrpcClientCreator             注册grpc客户端创造者
 c.GetGrpcClient(name ...string)         获取grpc客户端
 ```
 
+# 示例
+
++ [grpc服务端](https://github.com/zly-app/service/tree/master/grpc/example/grpc-s)
++ [grpc客户端](./example/grpc-c)
+
 # 配置
 
 > 默认组件类型为 `grpc-client`
