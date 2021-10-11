@@ -37,7 +37,7 @@ const (
 
 type Config struct {
 	Address                 string // 地址, 多个地址用半角逗号连接
-	KafkaVersion            string // kafka版本, 示例: v2.0.0.0, 2.0.0.0
+	KafkaVersion            string // kafka版本, 示例: v2.0.0, 2.0.0
 	ReadTimeout             int64  // 超时(毫秒)
 	WriteTimeout            int64  // 超时(毫秒)
 	DialTimeout             int64  // 超时(毫秒)
