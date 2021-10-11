@@ -12,7 +12,7 @@ const DefaultComponentType core.ComponentType = "kafka-producer"
 
 const (
 	// 默认kafka版本
-	defaultKafkaVersion = "2.0.0.0"
+	defaultKafkaVersion = "2.0.0"
 	// 默认读取超时
 	defaultReadTimeout = 10000
 	// 默认写入超时

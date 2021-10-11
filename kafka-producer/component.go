@@ -102,7 +102,10 @@ func (k *KafkaProducer) makeConf(name string) (*Config, error) {
 	if strings.HasPrefix(conf.KafkaVersion, "v") {
 		conf.KafkaVersion = conf.KafkaVersion[1:]
 	}
-	kConf.Version, _ = sarama.ParseKafkaVersion(conf.KafkaVersion)
+	kConf.Version, err = sarama.ParseKafkaVersion(conf.KafkaVersion)
+	if err != nil {
+		return nil, fmt.Errorf("无法解析版本号: %v", err)
+	}
 
 	conf.kConf = kConf
 	return conf, nil
