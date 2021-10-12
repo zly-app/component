@@ -12,22 +12,38 @@ import (
 
 type IKafkaProducer interface {
 	// 获取kafka同步生产者
-	GetKafkaSyncProducer(name ...string) sarama.SyncProducer
+	GetKafkaSyncProducer(name ...string) SyncProducer
 	// 获取kafka异步生产者
-	GetKafkaAsyncProducer(name ...string) sarama.AsyncProducer
+	GetKafkaAsyncProducer(name ...string) AsyncProducer
 	// 关闭
 	Close()
 }
 
-type instance struct {
-	syncProducer  sarama.SyncProducer
-	asyncProducer sarama.AsyncProducer
+// 同步生产者
+type SyncProducer = sarama.SyncProducer
+
+// 同步实例
+type syncInstance struct {
+	syncProducer sarama.SyncProducer
 }
 
-func (i *instance) Close() {
+func (i *syncInstance) Close() {
 	if i.syncProducer != nil {
 		_ = i.syncProducer.Close()
 	}
+}
+
+// 异步生产者
+type AsyncProducer interface {
+	sarama.AsyncProducer
+}
+
+// 异步实例
+type asyncInstance struct {
+	asyncProducer sarama.AsyncProducer
+}
+
+func (i *asyncInstance) Close() {
 	if i.asyncProducer != nil {
 		_ = i.asyncProducer.Close()
 	}
@@ -53,12 +69,12 @@ func NewKafkaProducer(app core.IApp, componentType ...core.ComponentType) IKafka
 	return k
 }
 
-func (k *KafkaProducer) GetKafkaSyncProducer(name ...string) sarama.SyncProducer {
-	return k.connSync.GetInstance(k.makeSyncClient, name...).(*instance).syncProducer
+func (k *KafkaProducer) GetKafkaSyncProducer(name ...string) SyncProducer {
+	return k.connSync.GetInstance(k.makeSyncClient, name...).(*syncInstance).syncProducer
 }
 
-func (k *KafkaProducer) GetKafkaAsyncProducer(name ...string) sarama.AsyncProducer {
-	return k.connAsync.GetInstance(k.makeAsyncClient, name...).(*instance).asyncProducer
+func (k *KafkaProducer) GetKafkaAsyncProducer(name ...string) AsyncProducer {
+	return k.connAsync.GetInstance(k.makeAsyncClient, name...).(*asyncInstance).asyncProducer
 }
 
 // 生成配置
@@ -126,7 +142,7 @@ func (k *KafkaProducer) makeSyncClient(name string) (conn.IInstance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("连接失败: %s", err)
 	}
-	return &instance{syncProducer: producer}, nil
+	return &syncInstance{syncProducer: producer}, nil
 }
 
 // 生成异步客户端
@@ -140,7 +156,7 @@ func (k *KafkaProducer) makeAsyncClient(name string) (conn.IInstance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("连接失败: %s", err)
 	}
-	return &instance{asyncProducer: producer}, nil
+	return &asyncInstance{asyncProducer: producer}, nil
 }
 
 func (k KafkaProducer) Close() {
