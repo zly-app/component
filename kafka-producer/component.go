@@ -20,7 +20,10 @@ type IKafkaProducer interface {
 }
 
 // 同步生产者
-type SyncProducer = sarama.SyncProducer
+type SyncProducer interface {
+	SendMessage(msg *ProducerMessage) (partition int32, offset int64, err error)
+	SendMessages(msgs []*ProducerMessage) error
+}
 
 // 同步实例
 type syncInstance struct {
@@ -35,7 +38,9 @@ func (i *syncInstance) Close() {
 
 // 异步生产者
 type AsyncProducer interface {
-	sarama.AsyncProducer
+	Input() chan<- *ProducerMessage
+	Successes() <-chan *ProducerMessage
+	Errors() <-chan *ProducerError
 }
 
 // 异步实例
