@@ -49,7 +49,11 @@ type Config struct {
 	RetryCount              int    // 发送失败重试次数
 	RetryInterval           int    // 发送失败重试间隔时间(毫秒)
 	ChannelBufferSize       int    // 通道缓冲数, 要在内部和外部通道中缓冲的事件数量
-	kConf                   *sarama.Config
+	ProxyAddress            string // 代理地址, 支持 socks5, socks5h
+	ProxyUser               string // 代理用户名
+	ProxyPassword           string // 代理用户的密码
+
+	kConf *sarama.Config
 }
 
 func newConfig() *Config {
@@ -63,6 +67,9 @@ func newConfig() *Config {
 }
 
 func (conf *Config) Check() error {
+	if conf.Address == "" {
+		return errors.New("address为空")
+	}
 	if conf.ReadTimeout <= 0 {
 		conf.ReadTimeout = defaultReadTimeout
 	}
@@ -83,9 +90,6 @@ func (conf *Config) Check() error {
 	}
 	if conf.ChannelBufferSize <= 0 {
 		conf.ChannelBufferSize = defaultChannelBufferSize
-	}
-	if conf.Address == "" {
-		return errors.New("address为空")
 	}
 	return nil
 }

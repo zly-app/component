@@ -8,6 +8,7 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/core"
+	"golang.org/x/net/proxy"
 )
 
 type IKafkaProducer interface {
@@ -98,6 +99,18 @@ func (k *KafkaProducer) makeConf(name string) (*Config, error) {
 	kConf.Net.DialTimeout = time.Duration(conf.DialTimeout) * time.Millisecond
 	kConf.Net.ReadTimeout = time.Duration(conf.ReadTimeout) * time.Millisecond
 	kConf.Net.WriteTimeout = time.Duration(conf.WriteTimeout) * time.Millisecond
+	if conf.ProxyAddress != "" {
+		kConf.Net.Proxy.Enable = true
+		var auth *proxy.Auth
+		if conf.ProxyUser != "" {
+			auth = &proxy.Auth{User: conf.ProxyUser, Password: conf.ProxyPassword}
+		}
+		d, err := proxy.SOCKS5("tcp", conf.ProxyAddress, auth, nil)
+		if err != nil {
+			return nil, fmt.Errorf("无法创建代理连接器: %v", err)
+		}
+		kConf.Net.Proxy.Dialer = d
+	}
 
 	kConf.Producer.MaxMessageBytes = conf.MaxMessageBytes
 	switch strings.ToLower(conf.Compression) {
