@@ -1,8 +1,18 @@
 package prometheus
 
 import (
+	"context"
+	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/client_golang/prometheus/push"
 	"github.com/zly-app/zapp/core"
+	"github.com/zly-app/zapp/logger"
+	"github.com/zlyuancn/zretry"
 	"go.uber.org/zap"
 )
 
@@ -88,6 +98,9 @@ type Prometheus struct {
 	gaugeCollector     map[string]*prometheus.GaugeVec     // 计量器
 	histogramCollector map[string]*prometheus.HistogramVec // 直方图
 	summaryCollector   map[string]*prometheus.SummaryVec   // 汇总
+
+	pullRegistry prometheus.Registerer // pull模式注册器
+	pusher       *push.Pusher          // push模式推送器
 }
 
 func NewPrometheus(app core.IApp, componentType ...core.ComponentType) IPrometheus {
@@ -102,7 +115,114 @@ func NewPrometheus(app core.IApp, componentType ...core.ComponentType) IPromethe
 	if len(componentType) > 0 {
 		p.componentType = componentType[0]
 	}
+
+	key := fmt.Sprintf("components.%s.default", p.componentType)
+	conf := newConfig()
+	if app.GetConfig().GetViper().IsSet(key) {
+		if err := app.GetConfig().GetViper().UnmarshalKey(key, conf); err != nil {
+			app.Fatal("解析 prometheus 配置失败", zap.Error(err))
+		}
+	}
+	conf.Check()
+
+	p.startPullMode(conf)
+	p.startPushMode(conf)
+
 	return p
+}
+
+// 启动pull模式
+func (p *Prometheus) startPullMode(conf *Config) {
+	if conf.PullBind == "" {
+		return
+	}
+
+	// 创建注册器
+	r := prometheus.NewRegistry()
+	p.pullRegistry = r
+	if conf.ProcessCollector {
+		r.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	}
+	if conf.GoCollector {
+		r.MustRegister(collectors.NewGoCollector())
+	}
+
+	p.app.Info("prometheus pull模式", zap.String("bind", conf.PullBind))
+
+	// 构建server
+	handler := promhttp.InstrumentMetricHandler(r, promhttp.HandlerFor(r, promhttp.HandlerOpts{}))
+	mux := http.NewServeMux()
+	mux.Handle(conf.PullPath, handler)
+	server := &http.Server{Addr: conf.PullBind, Handler: mux}
+
+	// 开始监听
+	go func(server *http.Server) {
+		if err := server.ListenAndServe(); err != nil {
+			logger.Log.Fatal("启动pull模式失败", zap.Error(err))
+		}
+	}(server)
+}
+
+// 启动push模式
+func (p *Prometheus) startPushMode(conf *Config) {
+	if conf.PushAddress == "" {
+		return
+	}
+
+	// 创建推送器
+	pusher := push.New(conf.PushAddress, p.app.Name())
+	p.pusher = pusher
+	if conf.PushInstance == "" {
+		conf.PushInstance = p.app.Name()
+	}
+	pusher.Grouping("instance", conf.PushInstance)
+
+	if conf.ProcessCollector {
+		pusher.Collector(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	}
+	if conf.GoCollector {
+		pusher.Collector(collectors.NewGoCollector())
+	}
+
+	// 开始推送
+	go func(ctx context.Context, conf *Config, pusher *push.Pusher) {
+		for {
+			t := time.NewTimer(time.Duration(conf.PushTimeInterval) * time.Millisecond)
+			select {
+			case <-ctx.Done():
+				t.Stop()
+				p.push(conf, pusher) // 最后一次推送
+				return
+			case <-t.C:
+				p.push(conf, pusher)
+			}
+		}
+	}(p.app.BaseContext(), conf, pusher)
+}
+
+// 推送
+func (p *Prometheus) push(conf *Config, pusher *push.Pusher) {
+	err := zretry.DoRetry(func() error {
+		return pusher.Push()
+	}, time.Duration(conf.PushRetryInterval)*time.Millisecond, int32(conf.PushRetry+1), func(err error) {
+		p.app.Error("prometheus状态推送失败", zap.Error(err))
+	})
+	if err == nil {
+		p.app.Debug("prometheus状态推送成功")
+	}
+}
+
+// 注册收集器
+func (p *Prometheus) registryCollector(collector prometheus.Collector) error {
+	if p.pullRegistry != nil {
+		if err := p.pullRegistry.Register(collector); err != nil {
+			return err
+		}
+	}
+	if p.pusher != nil {
+		p.pusher.Collector(collector)
+	}
+	return nil
 }
 
 func (p *Prometheus) RegistryPrometheusCounter(name, help string, constLabels Labels, labels ...string) {
@@ -111,17 +231,16 @@ func (p *Prometheus) RegistryPrometheusCounter(name, help string, constLabels La
 	}
 
 	counter := prometheus.NewCounterVec(prometheus.CounterOpts{
-		Namespace:   p.app.Name(),
+		Namespace:   "",
 		Subsystem:   "",
 		Name:        name,
 		Help:        help,
 		ConstLabels: constLabels,
 	}, labels)
-	err := prometheus.Register(counter)
+	err := p.registryCollector(counter)
 	if err != nil {
 		p.app.Fatal("注册prometheus计数器失败", zap.Error(err))
 	}
-
 	p.counterCollector[name] = counter
 }
 func (p *Prometheus) GetPrometheusCounter(name string, labels Labels) Counter {
@@ -153,18 +272,19 @@ func (p *Prometheus) RegistryPrometheusGauge(name, help string, constLabels Labe
 	}
 
 	gauge := prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Namespace:   p.app.Name(),
+		Namespace:   "",
 		Subsystem:   "",
 		Name:        name,
 		Help:        help,
 		ConstLabels: constLabels,
 	}, labels)
-	err := prometheus.Register(gauge)
+	err := p.registryCollector(gauge)
 	if err != nil {
 		p.app.Fatal("注册prometheus计量器失败", zap.Error(err))
 	}
 
 	p.gaugeCollector[name] = gauge
+
 }
 func (p *Prometheus) GetPrometheusGauge(name string, labels Labels) Gauge {
 	coll, ok := p.gaugeCollector[name]
@@ -195,13 +315,13 @@ func (p *Prometheus) RegistryPrometheusHistogram(name, help string, constLabels 
 	}
 
 	histogram := prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Namespace:   p.app.Name(),
+		Namespace:   "",
 		Subsystem:   "",
 		Name:        name,
 		Help:        help,
 		ConstLabels: constLabels,
 	}, labels)
-	err := prometheus.Register(histogram)
+	err := p.registryCollector(histogram)
 	if err != nil {
 		p.app.Fatal("注册prometheus直方图失败", zap.Error(err))
 	}
@@ -237,13 +357,13 @@ func (p *Prometheus) RegistryPrometheusSummary(name, help string, constLabels La
 	}
 
 	summary := prometheus.NewSummaryVec(prometheus.SummaryOpts{
-		Namespace:   p.app.Name(),
+		Namespace:   "",
 		Subsystem:   "",
 		Name:        name,
 		Help:        help,
 		ConstLabels: constLabels,
 	}, labels)
-	err := prometheus.Register(summary)
+	err := p.registryCollector(summary)
 	if err != nil {
 		p.app.Fatal("注册prometheus汇总失败", zap.Error(err))
 	}
