@@ -9,6 +9,7 @@
 package xorm
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -17,7 +18,10 @@ import (
 	_ "github.com/go-sql-driver/mysql"   // mysql
 	_ "github.com/lib/pq"                // postgres
 	_ "github.com/mattn/go-sqlite3"      // sqlite
+	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/log"
 	"xorm.io/xorm"
+	"xorm.io/xorm/contexts"
 	"xorm.io/xorm/names"
 
 	"github.com/zly-app/zapp/component/conn"
@@ -82,6 +86,8 @@ func (x *Xorm) makeClient(name string) (conn.IInstance, error) {
 
 	e.SetTableMapper(x.makeNameMapper(conf.TableMapperRule))
 	e.SetColumnMapper(x.makeNameMapper(conf.ColumnMapperRule))
+
+	e.AddHook(x)
 	return &instance{e}, nil
 }
 
@@ -99,4 +105,47 @@ func (x *Xorm) makeNameMapper(rule string) names.Mapper {
 
 func (x *Xorm) Close() {
 	x.conn.CloseAll()
+}
+
+// -------------
+//  xorm  hook
+// -------------
+
+type contextKey struct{}
+
+var xormSpanKey = &contextKey{}
+
+func (x *Xorm) BeforeProcess(c *contexts.ContextHook) (context.Context, error) {
+	// 获取父span
+	parentSpan := opentracing.SpanFromContext(c.Ctx)
+	if parentSpan == nil {
+		return c.Ctx, nil
+	}
+
+	// 创建子span
+	span := opentracing.StartSpan("xorm_exec", opentracing.ChildOf(parentSpan.Context()))
+
+	// 存入上下文
+	c.Ctx = context.WithValue(c.Ctx, xormSpanKey, span)
+	return c.Ctx, nil
+}
+
+func (x *Xorm) AfterProcess(c *contexts.ContextHook) error {
+	span, ok := c.Ctx.Value(xormSpanKey).(opentracing.Span)
+	if !ok {
+		return nil
+	}
+	defer span.Finish()
+
+	var fields []log.Field
+	if c.Err != nil {
+		span.SetTag("error", true)
+		fields = append(fields, log.Error(c.Err))
+	}
+
+	fields = append(fields, log.String("sql", c.SQL))
+	fields = append(fields, log.Object("args", c.Args))
+	fields = append(fields, log.String("exec_time", c.ExecuteTime.String()))
+	span.LogFields(fields...)
+	return nil
 }
