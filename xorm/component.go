@@ -19,7 +19,6 @@ import (
 	_ "github.com/lib/pq"                // postgres
 	_ "github.com/mattn/go-sqlite3"      // sqlite
 	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/log"
 	"xorm.io/xorm"
 	"xorm.io/xorm/contexts"
 	"xorm.io/xorm/names"
@@ -119,9 +118,9 @@ func (x *Xorm) BeforeProcess(c *contexts.ContextHook) (context.Context, error) {
 	var span opentracing.Span
 	parentSpan := opentracing.SpanFromContext(c.Ctx) // 获取父span
 	if parentSpan != nil {
-		span = opentracing.StartSpan("xorm_exec", opentracing.ChildOf(parentSpan.Context()))
+		span = opentracing.StartSpan("xorm_sql", opentracing.ChildOf(parentSpan.Context()))
 	} else {
-		span = opentracing.StartSpan("xorm_exec")
+		span = opentracing.StartSpan("xorm_sql")
 	}
 
 	// 存入上下文
@@ -136,15 +135,13 @@ func (x *Xorm) AfterProcess(c *contexts.ContextHook) error {
 	}
 	defer span.Finish()
 
-	var fields []log.Field
 	if c.Err != nil {
 		span.SetTag("error", true)
-		fields = append(fields, log.Error(c.Err))
+		span.SetTag("err", c.Err.Error())
 	}
 
 	span.SetTag("exec_time", c.ExecuteTime.String())
-	fields = append(fields, log.String("sql", c.SQL))
-	fields = append(fields, log.Object("args", c.Args))
-	span.LogFields(fields...)
+	span.SetTag("sql", c.SQL)
+	span.SetTag("args", c.Args)
 	return nil
 }
