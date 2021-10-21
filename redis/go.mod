@@ -4,5 +4,6 @@ go 1.15
 
 require (
 	github.com/go-redis/redis/v8 v8.4.9
+	github.com/opentracing/opentracing-go v1.2.0
 	github.com/zly-app/zapp v1.0.12
 )
