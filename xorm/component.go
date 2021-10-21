@@ -142,9 +142,9 @@ func (x *Xorm) AfterProcess(c *contexts.ContextHook) error {
 		fields = append(fields, log.Error(c.Err))
 	}
 
+	span.SetTag("exec_time", c.ExecuteTime.String())
 	fields = append(fields, log.String("sql", c.SQL))
 	fields = append(fields, log.Object("args", c.Args))
-	fields = append(fields, log.String("exec_time", c.ExecuteTime.String()))
 	span.LogFields(fields...)
 	return nil
 }
