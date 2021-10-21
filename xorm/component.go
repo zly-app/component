@@ -116,14 +116,13 @@ type contextKey struct{}
 var xormSpanKey = &contextKey{}
 
 func (x *Xorm) BeforeProcess(c *contexts.ContextHook) (context.Context, error) {
-	// 获取父span
-	parentSpan := opentracing.SpanFromContext(c.Ctx)
-	if parentSpan == nil {
-		return c.Ctx, nil
+	var span opentracing.Span
+	parentSpan := opentracing.SpanFromContext(c.Ctx) // 获取父span
+	if parentSpan != nil {
+		span = opentracing.StartSpan("xorm_exec", opentracing.ChildOf(parentSpan.Context()))
+	} else {
+		span = opentracing.StartSpan("xorm_exec")
 	}
-
-	// 创建子span
-	span := opentracing.StartSpan("xorm_exec", opentracing.ChildOf(parentSpan.Context()))
 
 	// 存入上下文
 	c.Ctx = context.WithValue(c.Ctx, xormSpanKey, span)
