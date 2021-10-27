@@ -92,7 +92,10 @@ func (r *Redis) makeClient(name string) (conn.IInstance, error) {
 			DialTimeout:  time.Duration(conf.DialTimeout) * time.Millisecond,
 		})
 	}
-	client.AddHook(r)
+
+	if conf.EnableOpenTrace {
+		client.AddHook(r)
+	}
 
 	return &instance{client}, nil
 }

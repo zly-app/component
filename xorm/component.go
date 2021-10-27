@@ -86,7 +86,9 @@ func (x *Xorm) makeClient(name string) (conn.IInstance, error) {
 	e.SetTableMapper(x.makeNameMapper(conf.TableMapperRule))
 	e.SetColumnMapper(x.makeNameMapper(conf.ColumnMapperRule))
 
-	e.AddHook(x)
+	if conf.EnableOpenTrace {
+		e.AddHook(x)
+	}
 	return &instance{e}, nil
 }
 
