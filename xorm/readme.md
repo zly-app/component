@@ -38,7 +38,7 @@ Source = "test.db"
 
 ## 直接使用
 
-每一次sql操作都会自动作为独立的trace记录
+每一次sql操作都会自动创建独立的trace记录
 
 ## 在函数中使用, 作为子span
 
@@ -51,7 +51,7 @@ func MyFun(c xorm.IXorm){
     ctx := opentracing.ContextWithSpan(context.Background(), span) // 将span存入ctx
 
     var a interface{}
-    c.GetXorm().Context(ctx). // 设置ctx
+    c.GetXorm().Context(ctx). // 设置ctx, 会根据ctx中带的span自动生成子span
         Sql(`select 1;`).Find(&a)
 }
 ```
@@ -63,7 +63,7 @@ func MyFun(c xorm.IXorm){
     span := opentracing.StartSpan("my_fun") // 创建span
     defer span.Finish() // 别忘记关闭
     ctx := opentracing.ContextWithSpan(context.Background(), span) // 将span存入ctx
-    session := c.GetXorm().NewSession().Context(ctx) // 设置ctx
+    session := c.GetXorm().NewSession().Context(ctx) // 设置ctx, session中的每次操作都会自动生成一个子span
 
     var a, b interface{}
     session.Sql(`select 1;`).Find(&a)
