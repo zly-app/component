@@ -22,13 +22,13 @@ import (
 
 type IRedis interface {
 	// 获取redis客户端
-	GetRedis(name ...string) redis.UniversalClient
+	GetRedis(name ...string) UniversalClient
 	// 关闭
 	Close()
 }
 
 type instance struct {
-	client redis.UniversalClient
+	client UniversalClient
 }
 
 func (i *instance) Close() {
@@ -53,7 +53,7 @@ func NewRedis(app core.IApp, componentType ...core.ComponentType) IRedis {
 	return r
 }
 
-func (r *Redis) GetRedis(name ...string) redis.UniversalClient {
+func (r *Redis) GetRedis(name ...string) UniversalClient {
 	return r.conn.GetInstance(r.makeClient, name...).(*instance).client
 }
 
