@@ -55,7 +55,7 @@ type GrpcClient struct {
 	conn          *conn.Conn
 	componentType core.ComponentType
 
-	configs    map[string]GrpcClientConfig
+	configs    map[string]*GrpcClientConfig
 	creatorMap map[string]reflect.Value
 }
 
@@ -65,7 +65,7 @@ func NewGrpcClient(app core.IApp, componentType ...core.ComponentType) IGrpcClie
 		conn:          conn.NewConn(),
 		componentType: DefaultComponentType,
 
-		configs:    make(map[string]GrpcClientConfig),
+		configs:    make(map[string]*GrpcClientConfig),
 		creatorMap: make(map[string]reflect.Value),
 	}
 	if len(componentType) > 0 {
@@ -75,19 +75,17 @@ func NewGrpcClient(app core.IApp, componentType ...core.ComponentType) IGrpcClie
 	// 加载配置
 	err := app.GetConfig().Parse("components."+string(g.componentType), &g.configs)
 	if err != nil {
-		logger.Log.Fatal("解析组件配置失败", zap.String("componentType", string(g.componentType)), zap.Error(err))
+		app.Fatal("解析组件配置失败", zap.String("componentType", string(g.componentType)), zap.Error(err))
+	}
+	// 检查配置
+	for _, conf := range g.configs {
+		if err := conf.Check(); err != nil {
+			app.Fatal("组件配置错误", zap.Error(err))
+		}
 	}
 
 	// 分析配置
 	for name, conf := range g.configs {
-		if conf.Registry == "" {
-			conf.Registry = DefaultRegistry
-		}
-		if conf.Balance == "" {
-			conf.Balance = DefaultBalance
-		}
-		g.configs[name] = conf
-
 		switch conf.Registry {
 		case local.Name:
 			local.RegistryAddress(name, conf.Address)
@@ -144,9 +142,9 @@ func (g *GrpcClient) makeClient(name string) (conn.IInstance, error) {
 		return nil, errors.New("未注册grpc客户端建造者")
 	}
 
-	cc, err := g.makeConn(name, conf.Registry, conf.Balance, conf.DialTimeout)
+	cc, err := g.makeConn(name, conf)
 	if err != nil {
-		return nil, fmt.Errorf("make conn error: name=%s, registry=%s, balance=%s, err: %s", name, conf.Registry, conf.Balance, err)
+		return nil, fmt.Errorf("构建conn错误: name=%s, registry=%s, balance=%s, err: %s", name, conf.Registry, conf.Balance, err)
 	}
 
 	client := creator.Call([]reflect.Value{reflect.ValueOf(cc)})[0].Interface()
@@ -157,20 +155,19 @@ func (g *GrpcClient) makeClient(name string) (conn.IInstance, error) {
 	}, nil
 }
 
-func (g *GrpcClient) makeConn(name, scheme, balance string, timeout int) (*grpc.ClientConn, error) {
-	if timeout <= 0 {
-		timeout = DefaultDialTimeout
-	}
-
-	ctx, cancel := context.WithTimeout(g.app.BaseContext(), time.Duration(timeout)*time.Millisecond)
+func (g *GrpcClient) makeConn(name string, conf *GrpcClientConfig) (*grpc.ClientConn, error) {
+	ctx, cancel := context.WithTimeout(g.app.BaseContext(), time.Duration(conf.DialTimeout)*time.Millisecond)
 	defer cancel()
 
-	return grpc.DialContext(ctx,
-		scheme+":///"+name,
-		grpc.WithInsecure(),   // 不安全连接
-		g.getBalance(balance), // 均衡器
-		grpc.WithBlock(),      // 等待连接
-	)
+	target := conf.Registry + ":///" + name
+	opts := []grpc.DialOption{
+		g.getBalance(conf.Balance), // 均衡器
+		grpc.WithBlock(),           // 等待连接成功. 注意, 这个不要作为配置项, 因为要和zapp的conn组件配合, 所以它是必须的.
+	}
+	if *conf.InsecureDial {
+		opts = append(opts, grpc.WithInsecure()) // 不安全连接
+	}
+	return grpc.DialContext(ctx, target, opts...)
 }
 
 func (g *GrpcClient) getBalance(balance string) grpc.DialOption {
