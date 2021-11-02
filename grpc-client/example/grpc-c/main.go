@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	grpc_client "github.com/zly-app/component/grpc-client"
 	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/core"
 
-	"grpc-c/pb/hello"
+	grpc_client "github.com/zly-app/component/grpc-client"
+
+	"github.com/zly-app/component/grpc-client/example/grpc-c/pb/hello"
 )
 
 type Component struct {
