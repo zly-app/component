@@ -29,15 +29,18 @@ const (
 	defaultDialTimeout = 5000
 	// 默认不安全的连接
 	defaultInsecureDial = true
+	// 默认启用开放链路追踪
+	defaultEnableOpenTrace = false
 )
 
 // grpc客户端配置
 type GrpcClientConfig struct {
-	Address      string // 链接地址
-	Registry     string // 注册器, 默认为 local
-	Balance      string // 负载均衡, 默认为 round_robin
-	DialTimeout  int    // 连接超时(毫秒), 默认为 5000
-	InsecureDial *bool  // 不安全的连接
+	Address         string // 链接地址
+	Registry        string // 注册器, 默认为 local
+	Balance         string // 负载均衡, 默认为 round_robin
+	DialTimeout     int    // 连接超时(毫秒), 默认为 5000
+	InsecureDial    *bool  // 不安全的连接
+	EnableOpenTrace *bool  // 启用开放链路追踪
 }
 
 func (conf *GrpcClientConfig) Check() error {
@@ -59,6 +62,10 @@ func (conf *GrpcClientConfig) Check() error {
 	if conf.InsecureDial == nil {
 		b := defaultInsecureDial
 		conf.InsecureDial = &b
+	}
+	if conf.EnableOpenTrace == nil {
+		b := defaultEnableOpenTrace
+		conf.EnableOpenTrace = &b
 	}
 	return nil
 }

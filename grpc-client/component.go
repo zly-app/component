@@ -15,11 +15,14 @@ import (
 	"reflect"
 	"time"
 
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	"github.com/opentracing/opentracing-go"
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/core"
 	"github.com/zly-app/zapp/logger"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/zly-app/component/grpc-client/balance/round_robin"
 	"github.com/zly-app/component/grpc-client/registry/local"
@@ -164,9 +167,16 @@ func (g *GrpcClient) makeConn(name string, conf *GrpcClientConfig) (*grpc.Client
 		g.getBalance(conf.Balance), // 均衡器
 		grpc.WithBlock(),           // 等待连接成功. 注意, 这个不要作为配置项, 因为要和zapp的conn组件配合, 所以它是必须的.
 	}
+
+	var chainUnaryClientList []grpc.UnaryClientInterceptor
+
 	if *conf.InsecureDial {
 		opts = append(opts, grpc.WithInsecure()) // 不安全连接
 	}
+	if *conf.EnableOpenTrace {
+		chainUnaryClientList = append(chainUnaryClientList, UnaryClientOpenTraceInterceptor)
+	}
+	opts = append(opts, grpc.WithUnaryInterceptor(grpc_middleware.ChainUnaryClient(chainUnaryClientList...)))
 	return grpc.DialContext(ctx, target, opts...)
 }
 
@@ -182,4 +192,49 @@ func (g *GrpcClient) getBalance(balance string) grpc.DialOption {
 
 func (g *GrpcClient) Close() {
 	g.conn.CloseAll()
+}
+
+type TextMapCarrier struct {
+	metadata.MD
+}
+
+func (t TextMapCarrier) Set(key, val string) {
+	t.MD[key] = append(t.MD[key], val)
+}
+
+// 开放链路追踪hook
+func UnaryClientOpenTraceInterceptor(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	var span opentracing.Span
+	parentSpan := opentracing.SpanFromContext(ctx) // 获取父span
+	if parentSpan != nil {
+		span = opentracing.StartSpan(method, opentracing.ChildOf(parentSpan.Context()))
+	} else {
+		span = opentracing.StartSpan(method)
+	}
+	defer span.Finish()
+
+	// 取出元数据
+	md, ok := metadata.FromIncomingContext(ctx)
+	if ok {
+		// 如果对元数据修改必须使用它的副本
+		md = md.Copy()
+	} else {
+		md = metadata.New(nil)
+	}
+
+	// 注入
+	carrier := TextMapCarrier{md}
+	err := opentracing.GlobalTracer().Inject(span.Context(), opentracing.TextMap, carrier)
+	if err != nil {
+		logger.Log.Error("grpc trace inject err", zap.Error(err))
+	} else {
+		ctx = metadata.NewOutgoingContext(ctx, md)
+	}
+
+	err = invoker(ctx, method, req, reply, cc, opts...)
+	if err != nil {
+		span.SetTag("error", true)
+		span.SetTag("err", err.Error())
+	}
+	return err
 }
