@@ -26,8 +26,8 @@ c.GetGrpcClient(name ...string)         获取grpc客户端
 [components.grpc-client.default]
 # 链接地址
 Address="127.0.0.1:3000"
-# 注册器, 默认为 local
-Registry="local"
+# 注册器, 默认为 static
+Registry="static"
 # 负载均衡, 默认为 round_robin
 Balance="round_robin"
 # 连接超时(毫秒), 默认为 5000

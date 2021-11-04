@@ -6,7 +6,7 @@
 -------------------------------------------------
 */
 
-package local
+package static
 
 import (
 	"errors"
@@ -19,7 +19,7 @@ import (
 	"github.com/zly-app/zapp/logger"
 )
 
-const Name = "local"
+const Name = "static"
 
 var defaultResolver = newResolver()
 

@@ -25,7 +25,7 @@ import (
 	"google.golang.org/grpc/metadata"
 
 	"github.com/zly-app/component/grpc-client/balance/round_robin"
-	"github.com/zly-app/component/grpc-client/registry/local"
+	"github.com/zly-app/component/grpc-client/registry/static"
 )
 
 var typeOfGrpcClientConn = reflect.TypeOf((*grpc.ClientConn)(nil))
@@ -90,8 +90,8 @@ func NewGrpcClient(app core.IApp, componentType ...core.ComponentType) IGrpcClie
 	// 分析配置
 	for name, conf := range g.configs {
 		switch conf.Registry {
-		case local.Name:
-			local.RegistryAddress(name, conf.Address)
+		case static.Name:
+			static.RegistryAddress(name, conf.Address)
 		default:
 			logger.Log.Fatal("未定义的Grpc注册器", zap.String("registry", conf.Registry))
 		}
