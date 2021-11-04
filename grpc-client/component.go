@@ -231,10 +231,14 @@ func UnaryClientOpenTraceInterceptor(ctx context.Context, method string, req, re
 		ctx = metadata.NewOutgoingContext(ctx, md)
 	}
 
+	span.SetTag("target", cc.Target())
+	span.SetTag("req", req)
 	err = invoker(ctx, method, req, reply, cc, opts...)
 	if err != nil {
 		span.SetTag("error", true)
 		span.SetTag("err", err.Error())
+	} else {
+		span.SetTag("reply", reply)
 	}
 	return err
 }
