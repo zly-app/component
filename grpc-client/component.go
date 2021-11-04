@@ -58,7 +58,6 @@ type GrpcClient struct {
 	conn          *conn.Conn
 	componentType core.ComponentType
 
-	configs    map[string]*GrpcClientConfig
 	creatorMap map[string]reflect.Value
 }
 
@@ -68,37 +67,11 @@ func NewGrpcClient(app core.IApp, componentType ...core.ComponentType) IGrpcClie
 		conn:          conn.NewConn(),
 		componentType: DefaultComponentType,
 
-		configs:    make(map[string]*GrpcClientConfig),
 		creatorMap: make(map[string]reflect.Value),
 	}
 	if len(componentType) > 0 {
 		g.componentType = componentType[0]
 	}
-
-	// 加载配置
-	err := app.GetConfig().Parse("components."+string(g.componentType), &g.configs)
-	if err != nil {
-		app.Fatal("解析组件配置失败", zap.String("componentType", string(g.componentType)), zap.Error(err))
-	}
-	// 检查配置
-	for _, conf := range g.configs {
-		if err := conf.Check(); err != nil {
-			app.Fatal("组件配置错误", zap.Error(err))
-		}
-	}
-
-	// 分析配置
-	for name, conf := range g.configs {
-		switch conf.Registry {
-		case static.Name:
-			static.RegistryAddress(name, conf.Address)
-		default:
-			logger.Log.Fatal("未定义的Grpc注册器", zap.String("registry", conf.Registry))
-		}
-
-		_ = g.getBalance(conf.Balance)
-	}
-
 	return g
 }
 
@@ -133,18 +106,29 @@ func (g *GrpcClient) GetGrpcClient(name string) interface{} {
 }
 
 func (g *GrpcClient) makeClient(name string) (conn.IInstance, error) {
-	// 获取配置
-	conf, ok := g.configs[name]
-	if !ok {
-		return nil, errors.New("试图获取未注册的grpc客户端")
-	}
-
 	// 获取建造者
 	creator, ok := g.creatorMap[name]
 	if !ok {
 		return nil, errors.New("未注册grpc客户端建造者")
 	}
 
+	// 解析配置
+	conf := newConfig()
+	err := g.app.GetConfig().ParseComponentConfig(g.componentType, name, conf, true)
+	if err != nil {
+		return nil, fmt.Errorf("grpc客户端的配置错误: %v", err)
+	}
+	conf.Check()
+
+	// 注册服务地址
+	switch conf.Registry {
+	case static.Name:
+		static.RegistryAddress(name, conf.Address)
+	default:
+		logger.Log.Fatal("未定义的Grpc注册器", zap.String("registry", conf.Registry))
+	}
+
+	// 构建conn
 	cc, err := g.makeConn(name, conf)
 	if err != nil {
 		return nil, fmt.Errorf("构建conn错误: name=%s, registry=%s, balance=%s, err: %s", name, conf.Registry, conf.Balance, err)
@@ -162,7 +146,7 @@ func (g *GrpcClient) makeConn(name string, conf *GrpcClientConfig) (*grpc.Client
 	ctx, cancel := context.WithTimeout(g.app.BaseContext(), time.Duration(conf.DialTimeout)*time.Millisecond)
 	defer cancel()
 
-	target := conf.Registry + ":///" + name
+	target := fmt.Sprintf("%s://%s/%s", conf.Registry, "", name)
 	opts := []grpc.DialOption{
 		g.getBalance(conf.Balance), // 均衡器
 		grpc.WithBlock(),           // 等待连接成功. 注意, 这个不要作为配置项, 因为要和zapp的conn组件配合, 所以它是必须的.
@@ -170,10 +154,10 @@ func (g *GrpcClient) makeConn(name string, conf *GrpcClientConfig) (*grpc.Client
 
 	var chainUnaryClientList []grpc.UnaryClientInterceptor
 
-	if *conf.InsecureDial {
+	if conf.InsecureDial {
 		opts = append(opts, grpc.WithInsecure()) // 不安全连接
 	}
-	if *conf.EnableOpenTrace {
+	if conf.EnableOpenTrace {
 		chainUnaryClientList = append(chainUnaryClientList, UnaryClientOpenTraceInterceptor)
 	}
 	opts = append(opts, grpc.WithUnaryInterceptor(grpc_middleware.ChainUnaryClient(chainUnaryClientList...)))
@@ -185,7 +169,7 @@ func (g *GrpcClient) getBalance(balance string) grpc.DialOption {
 	case round_robin.Name:
 		return round_robin.Balance()
 	default:
-		logger.Log.Fatal("未定义的Grpc客户端均衡器", zap.String("balance", balance))
+		logger.Log.Panic("未定义的Grpc客户端均衡器", zap.String("balance", balance))
 	}
 	return nil
 }

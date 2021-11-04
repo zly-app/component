@@ -9,8 +9,6 @@
 package grpc_client
 
 import (
-	"errors"
-
 	"github.com/zly-app/zapp/core"
 
 	"github.com/zly-app/component/grpc-client/balance/round_robin"
@@ -21,6 +19,8 @@ import (
 const DefaultComponentType core.ComponentType = "grpc-client"
 
 const (
+	// 默认地址
+	defaultAddress = "127.0.0.1:3000"
 	// 默认注册器
 	defaultRegistry = static.Name
 	// 默认均衡器
@@ -39,16 +39,20 @@ type GrpcClientConfig struct {
 	Registry        string // 注册器, 默认为 static
 	Balance         string // 负载均衡, 默认为 round_robin
 	DialTimeout     int    // 连接超时(毫秒), 默认为 5000
-	InsecureDial    *bool  // 不安全的连接
-	EnableOpenTrace *bool  // 启用开放链路追踪
+	InsecureDial    bool   // 不安全的连接
+	EnableOpenTrace bool   // 启用开放链路追踪
 }
 
-func (conf *GrpcClientConfig) Check() error {
-	if conf == nil {
-		return errors.New("配置为nil")
+func newConfig() *GrpcClientConfig {
+	return &GrpcClientConfig{
+		InsecureDial:    defaultInsecureDial,
+		EnableOpenTrace: defaultEnableOpenTrace,
 	}
+}
+
+func (conf *GrpcClientConfig) Check() {
 	if conf.Address == "" {
-		return errors.New("address 为空")
+		conf.Address = defaultAddress
 	}
 	if conf.Registry == "" {
 		conf.Registry = defaultRegistry
@@ -59,13 +63,4 @@ func (conf *GrpcClientConfig) Check() error {
 	if conf.DialTimeout < 1 {
 		conf.DialTimeout = defaultDialTimeout
 	}
-	if conf.InsecureDial == nil {
-		b := defaultInsecureDial
-		conf.InsecureDial = &b
-	}
-	if conf.EnableOpenTrace == nil {
-		b := defaultEnableOpenTrace
-		conf.EnableOpenTrace = &b
-	}
-	return nil
 }

@@ -23,40 +23,43 @@ const Name = "static"
 
 var defaultResolver = newResolver()
 
-func RegistryAddress(endpointName, address string) {
-	defaultResolver.RegistryEndpoint(endpointName, address)
+func RegistryAddress(serviceName, address string) {
+	defaultResolver.RegistryEndpoint(serviceName, address)
 }
 
 type resolverCli struct {
 	endpoints map[string][]resolver.Address
-	once      sync.Once
+	mx        sync.RWMutex
 }
 
 func newResolver() *resolverCli {
-	return &resolverCli{
+	r := &resolverCli{
 		endpoints: make(map[string][]resolver.Address),
 	}
+	resolver.Register(r)
+	return r
 }
 
-func (r *resolverCli) RegistryEndpoint(endpointName, endpoints string) {
-	if endpoints == "" {
-		logger.Log.Fatal("endpoint is empty", zap.String("name", endpointName))
-	}
-	address := strings.Split(endpoints, ",")
-	addr := make([]resolver.Address, len(address))
-	for i, a := range address {
-		addr[i] = resolver.Address{Addr: a}
+func (r *resolverCli) RegistryEndpoint(serviceName, address string) {
+	if address == "" {
+		logger.Log.Fatal("endpoint is empty", zap.String("name", serviceName))
 	}
 
-	r.endpoints[endpointName] = addr
+	ss := strings.Split(address, ",")
+	addresses := make([]resolver.Address, len(ss))
+	for i, s := range ss {
+		addresses[i] = resolver.Address{Addr: s}
+	}
 
-	r.once.Do(func() {
-		resolver.Register(defaultResolver)
-	})
+	r.mx.Lock()
+	r.endpoints[serviceName] = addresses
+	r.mx.Unlock()
 }
 
 func (r *resolverCli) Build(target resolver.Target, cc resolver.ClientConn, opts resolver.BuildOptions) (resolver.Resolver, error) {
+	r.mx.RLock()
 	address := r.endpoints[target.Endpoint]
+	r.mx.RUnlock()
 	if len(address) == 0 {
 		return nil, errors.New("address of endpoint is empty or unregistered")
 	}
