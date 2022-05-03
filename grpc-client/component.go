@@ -160,6 +160,10 @@ func (g *GrpcClient) makeConn(name string, conf *GrpcClientConfig) (*grpc.Client
 	if conf.EnableOpenTrace {
 		chainUnaryClientList = append(chainUnaryClientList, UnaryClientOpenTraceInterceptor)
 	}
+	chainUnaryClientList = append(chainUnaryClientList,
+		UnaryClientLogInterceptor(g.app, conf), // 日志
+	)
+
 	opts = append(opts, grpc.WithUnaryInterceptor(grpc_middleware.ChainUnaryClient(chainUnaryClientList...)))
 	return grpc.DialContext(ctx, target, opts...)
 }
@@ -186,6 +190,34 @@ func (t TextMapCarrier) Set(key, val string) {
 	t.MD[key] = append(t.MD[key], val)
 }
 
+// 日志
+func UnaryClientLogInterceptor(app core.IApp, conf *GrpcClientConfig) grpc.UnaryClientInterceptor {
+	return func(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+		log := app.NewTraceLogger(ctx, zap.String("grpc.method", method))
+
+		startTime := time.Now()
+		if conf.ReqLogLevelIsInfo {
+			log.Info("grpc.request", zap.Any("req", req))
+		} else {
+			log.Debug("grpc.request", zap.Any("req", req))
+		}
+
+		err := invoker(ctx, method, req, reply, cc, opts...)
+		if err != nil {
+			log.Error("grpc.response", zap.String("latency", time.Since(startTime).String()), zap.Error(err))
+			return err
+		}
+
+		if conf.RspLogLevelIsInfo {
+			log.Info("grpc.response", zap.String("latency", time.Since(startTime).String()), zap.Any("reply", reply))
+		} else {
+			log.Debug("grpc.response", zap.String("latency", time.Since(startTime).String()), zap.Any("reply", reply))
+		}
+
+		return err
+	}
+}
+
 // 开放链路追踪hook
 func UnaryClientOpenTraceInterceptor(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
 	var span opentracing.Span
@@ -196,6 +228,7 @@ func UnaryClientOpenTraceInterceptor(ctx context.Context, method string, req, re
 		span = opentracing.StartSpan(method)
 	}
 	defer span.Finish()
+	ctx = opentracing.ContextWithSpan(ctx, span)
 
 	// 取出元数据
 	md, ok := metadata.FromIncomingContext(ctx)
@@ -208,16 +241,12 @@ func UnaryClientOpenTraceInterceptor(ctx context.Context, method string, req, re
 
 	// 注入
 	carrier := TextMapCarrier{md}
-	err := opentracing.GlobalTracer().Inject(span.Context(), opentracing.TextMap, carrier)
-	if err != nil {
-		logger.Log.Error("grpc trace inject err", zap.Error(err))
-	} else {
-		ctx = metadata.NewOutgoingContext(ctx, md)
-	}
+	_ = opentracing.GlobalTracer().Inject(span.Context(), opentracing.TextMap, carrier)
+	ctx = metadata.NewOutgoingContext(ctx, md)
 
 	span.SetTag("target", cc.Target())
 	span.SetTag("req", req)
-	err = invoker(ctx, method, req, reply, cc, opts...)
+	err := invoker(ctx, method, req, reply, cc, opts...)
 	if err != nil {
 		span.SetTag("error", true)
 		span.SetTag("err", err.Error())
