@@ -30,17 +30,19 @@ const (
 	// 默认不安全的连接
 	defaultInsecureDial = true
 	// 默认启用开放链路追踪
-	defaultEnableOpenTrace = false
+	defaultEnableOpenTrace = true
 )
 
 // grpc客户端配置
 type GrpcClientConfig struct {
-	Address         string // 链接地址
-	Registry        string // 注册器, 默认为 static
-	Balance         string // 负载均衡, 默认为 round_robin
-	DialTimeout     int    // 连接超时(毫秒), 默认为 5000
-	InsecureDial    bool   // 不安全的连接
-	EnableOpenTrace bool   // 启用开放链路追踪
+	Address           string // 链接地址
+	Registry          string // 注册器, 默认为 static
+	Balance           string // 负载均衡, 默认为 round_robin
+	DialTimeout       int    // 连接超时(毫秒), 默认为 5000
+	InsecureDial      bool   // 不安全的连接
+	EnableOpenTrace   bool   // 启用开放链路追踪
+	ReqLogLevelIsInfo bool   // 请求日志等级设为info
+	RspLogLevelIsInfo bool   // 响应日志等级设为info
 }
 
 func newConfig() *GrpcClientConfig {
