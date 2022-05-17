@@ -19,6 +19,8 @@ import (
 	_ "github.com/lib/pq"                // postgres
 	_ "github.com/mattn/go-sqlite3"      // sqlite
 	"github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/log"
+	"github.com/zly-app/zapp/pkg/utils"
 	"xorm.io/xorm"
 	"xorm.io/xorm/contexts"
 	"xorm.io/xorm/names"
@@ -86,6 +88,10 @@ func (x *Xorm) makeClient(name string) (conn.IInstance, error) {
 	e.SetTableMapper(x.makeNameMapper(conf.TableMapperRule))
 	e.SetColumnMapper(x.makeNameMapper(conf.ColumnMapperRule))
 
+	if l, err := time.LoadLocation(conf.TZ); err == nil {
+		e.SetTZLocation(l)
+	}
+
 	if conf.EnableOpenTrace {
 		e.AddHook(x)
 	}
@@ -117,13 +123,7 @@ type contextKey struct{}
 var xormSpanKey = &contextKey{}
 
 func (x *Xorm) BeforeProcess(c *contexts.ContextHook) (context.Context, error) {
-	var span opentracing.Span
-	parentSpan := opentracing.SpanFromContext(c.Ctx) // 获取父span
-	if parentSpan != nil {
-		span = opentracing.StartSpan("xorm_sql", opentracing.ChildOf(parentSpan.Context()))
-	} else {
-		span = opentracing.StartSpan("xorm_sql")
-	}
+	span := utils.Trace.GetChildSpan(c.Ctx, "xorm_sql")
 
 	// 存入上下文
 	c.Ctx = context.WithValue(c.Ctx, xormSpanKey, span)
@@ -138,12 +138,11 @@ func (x *Xorm) AfterProcess(c *contexts.ContextHook) error {
 	defer span.Finish()
 
 	if c.Err != nil {
-		span.SetTag("error", true)
-		span.SetTag("err", c.Err.Error())
+		span.LogFields(log.Bool("error", true))
+		span.LogFields(log.String("err", c.Err.Error()))
 	}
 
-	span.SetTag("exec_time", c.ExecuteTime.String())
 	span.SetTag("sql", c.SQL)
-	span.SetTag("args", c.Args)
+	span.LogFields(log.Object("args", c.Args))
 	return nil
 }
