@@ -58,7 +58,7 @@ type Config struct {
 	MaxPendingMessages              int    // 保存等待从代理接收确认消息的消息的队列的最大大小
 	CompressionType                 string // 压缩器类型, 支持 none, lz4, zlib, zstd
 	CompressionLevel                string // 压缩等级, 支持 default, faster, better
-	DisableBatching                 bool   // 是否关闭批处理, 如果消费者使用KeyShard模式必须关闭或者启用基于key的批次构建容器, 否则可能导致相同的key被不同的消费者消费
+	DisableBatching                 bool   // 是否关闭批处理, 如果消费者使用KeyShared模式必须关闭或者启用基于key的批次构建容器, 否则可能导致相同的key被不同的消费者消费
 	KeyBatcherBuilder               bool   // 是否启用基于key的批次构建容器
 	BatchingMaxPublishDelay         int    // 批处理等待时间, 单位毫秒
 	BatchingMaxMessages             int    // 单批次消息最大数量
