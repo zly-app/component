@@ -86,8 +86,8 @@ func (p *PulsarProducer) Close() {
 func NewProducer(conf *Config) (*PulsarProducer, error) {
 	co := pulsar.ClientOptions{
 		URL:                     conf.Url,
-		ConnectionTimeout:       time.Duration(conf.ConnectionTimeout) * time.Second,
-		OperationTimeout:        time.Duration(conf.OperationTimeout) * time.Second,
+		ConnectionTimeout:       time.Duration(conf.ConnectionTimeout) * time.Millisecond,
+		OperationTimeout:        time.Duration(conf.OperationTimeout) * time.Millisecond,
 		ListenerName:            conf.ListenerName,
 		MaxConnectionsPerBroker: 1,
 		Logger:                  log.DefaultNopLogger(),
@@ -110,16 +110,16 @@ func NewProducer(conf *Config) (*PulsarProducer, error) {
 		CompressionLevel: pulsar.Default,
 		// MessageRouter:                   nil,
 		DisableBatching:         conf.DisableBatching,
-		BatchingMaxPublishDelay: time.Duration(conf.BatchingMaxPublishDelay) * time.Second,
+		BatchingMaxPublishDelay: time.Duration(conf.BatchingMaxPublishDelay) * time.Millisecond,
 		BatchingMaxMessages:     uint(conf.BatchingMaxMessages),
 		BatchingMaxSize:         uint(conf.BatchingMaxSize),
 		// Interceptors:                    nil,
 		// Schema:                          nil,
-		PartitionsAutoDiscoveryInterval: time.Duration(conf.PartitionsAutoDiscoveryInterval) * time.Second,
+		PartitionsAutoDiscoveryInterval: time.Duration(conf.PartitionsAutoDiscoveryInterval) * time.Millisecond,
 		// Encryption:                      nil,
 	}
 	if conf.SendTimeout != -1 {
-		po.SendTimeout = time.Duration(conf.SendTimeout) * time.Second
+		po.SendTimeout = time.Duration(conf.SendTimeout) * time.Millisecond
 	}
 	switch strings.ToLower(conf.CompressionType) {
 	case "lz4":
