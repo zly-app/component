@@ -122,7 +122,7 @@ func (conf *Config) Check() error {
 		conf.BatchingMaxSize = defBatchingMaxSize
 	}
 	if conf.MaxReconnectToBroker < 0 {
-		conf.MaxReconnectToBroker = -1
+		conf.MaxReconnectToBroker = defMaxReconnectToBroker
 	}
 	if conf.PartitionsAutoDiscoveryInterval < 1 {
 		conf.PartitionsAutoDiscoveryInterval = defPartitionsAutoDiscoveryInterval
