@@ -9,7 +9,7 @@
 
 # 示例
 
-1. 添加配置文件 `configs/default.yml`
+1. 添加配置文件 `configs/default.yml`. 更多配置参考[这里](./config.go)
 
 ```yaml
 components:
