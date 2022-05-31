@@ -46,9 +46,6 @@ func (p *ProducerCreator) Close() { p.conn.CloseAll() }
 func (p *ProducerCreator) makeProducer(name string) (conn.IInstance, error) {
 	conf := NewConfig()
 	err := p.app.GetConfig().ParseComponentConfig(DefaultComponentType, name, conf, true)
-	if err == nil {
-		err = conf.Check()
-	}
 	if err != nil {
 		return nil, fmt.Errorf("获取组件<%s.%s>配置失败: %v", DefaultComponentType, name, err)
 	}
@@ -84,6 +81,10 @@ func (p *PulsarProducer) Close() {
 
 // 创建生产者
 func NewProducer(conf *Config) (*PulsarProducer, error) {
+	if err := conf.Check(); err != nil {
+		return nil, err
+	}
+
 	co := pulsar.ClientOptions{
 		URL:                     conf.Url,
 		ConnectionTimeout:       time.Duration(conf.ConnectionTimeout) * time.Millisecond,
