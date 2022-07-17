@@ -25,6 +25,14 @@ Driver = "sqllite3"
 Source = "test.db"
 ```
 
+```toml
+[components.xorm.default]
+# 驱动
+Driver = "mysql"
+# 连接源
+Source = "user:passwd@tcp(localhost:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local"
+```
+
 # 驱动支持
 
 + `mysql`
