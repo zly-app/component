@@ -60,11 +60,21 @@ func (r *Redis) GetRedis(name ...string) UniversalClient {
 func (r *Redis) makeClient(name string) (conn.IInstance, error) {
 	conf := newRedisConfig()
 	err := r.app.GetConfig().ParseComponentConfig(r.componentType, name, conf)
-	if err == nil {
-		err = conf.Check()
-	}
 	if err != nil {
-		return nil, fmt.Errorf("redis配置错误: %v", err)
+		return nil, fmt.Errorf("解析redis客户端配置错误: %v", err)
+	}
+
+	client, err := MakeRedisClient(conf)
+	if err != nil {
+		return nil, fmt.Errorf("生成redis客户端失败: %v", err)
+	}
+	return &instance{client: client}, nil
+}
+
+func MakeRedisClient(conf *RedisConfig) (UniversalClient, error) {
+	err := conf.Check()
+	if err != nil {
+		return nil, fmt.Errorf("redis客户端配置错误: %v", err)
 	}
 
 	var client redis.UniversalClient
@@ -94,10 +104,10 @@ func (r *Redis) makeClient(name string) (conn.IInstance, error) {
 	}
 
 	if conf.EnableOpenTrace {
-		client.AddHook(r)
+		client.AddHook(redisTraceHook{})
 	}
 
-	return &instance{client}, nil
+	return client, nil
 }
 
 func (r *Redis) Close() {
@@ -112,7 +122,9 @@ type contextKey struct{}
 
 var redisSpanKey = &contextKey{}
 
-func (r *Redis) BeforeProcess(ctx context.Context, cmd redis.Cmder) (context.Context, error) {
+type redisTraceHook struct{}
+
+func (redisTraceHook) BeforeProcess(ctx context.Context, cmd redis.Cmder) (context.Context, error) {
 	var span opentracing.Span
 	parentSpan := opentracing.SpanFromContext(ctx) // 获取父span
 	if parentSpan != nil {
@@ -124,7 +136,7 @@ func (r *Redis) BeforeProcess(ctx context.Context, cmd redis.Cmder) (context.Con
 	return context.WithValue(ctx, redisSpanKey, span), nil
 }
 
-func (r *Redis) AfterProcess(ctx context.Context, cmd redis.Cmder) error {
+func (redisTraceHook) AfterProcess(ctx context.Context, cmd redis.Cmder) error {
 	span, ok := ctx.Value(redisSpanKey).(opentracing.Span)
 	if !ok {
 		return nil
@@ -140,7 +152,7 @@ func (r *Redis) AfterProcess(ctx context.Context, cmd redis.Cmder) error {
 	return nil
 }
 
-func (r *Redis) BeforeProcessPipeline(ctx context.Context, cmds []redis.Cmder) (context.Context, error) {
+func (redisTraceHook) BeforeProcessPipeline(ctx context.Context, cmds []redis.Cmder) (context.Context, error) {
 	var span opentracing.Span
 	parentSpan := opentracing.SpanFromContext(ctx) // 获取父span
 	if parentSpan != nil {
@@ -152,7 +164,7 @@ func (r *Redis) BeforeProcessPipeline(ctx context.Context, cmds []redis.Cmder) (
 	return context.WithValue(ctx, redisSpanKey, span), nil
 }
 
-func (r *Redis) AfterProcessPipeline(ctx context.Context, cmds []redis.Cmder) error {
+func (redisTraceHook) AfterProcessPipeline(ctx context.Context, cmds []redis.Cmder) error {
 	span, ok := ctx.Value(redisSpanKey).(opentracing.Span)
 	if !ok {
 		return nil
