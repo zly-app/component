@@ -16,13 +16,14 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/opentracing/opentracing-go"
+	open_log "github.com/opentracing/opentracing-go/log"
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/core"
 )
 
-type IRedis interface {
+type IRedisCreator interface {
 	// 获取redis客户端
-	GetRedis(name ...string) UniversalClient
+	GetRedis(name string) UniversalClient
 	// 关闭
 	Close()
 }
@@ -41,7 +42,7 @@ type Redis struct {
 	componentType core.ComponentType
 }
 
-func NewRedis(app core.IApp, componentType ...core.ComponentType) IRedis {
+func NewRedisCreator(app core.IApp, componentType ...core.ComponentType) IRedisCreator {
 	r := &Redis{
 		app:           app,
 		conn:          conn.NewConn(),
@@ -53,8 +54,8 @@ func NewRedis(app core.IApp, componentType ...core.ComponentType) IRedis {
 	return r
 }
 
-func (r *Redis) GetRedis(name ...string) UniversalClient {
-	return r.conn.GetInstance(r.makeClient, name...).(*instance).client
+func (r *Redis) GetRedis(name string) UniversalClient {
+	return r.conn.GetInstance(r.makeClient, name).(*instance).client
 }
 
 func (r *Redis) makeClient(name string) (conn.IInstance, error) {
@@ -64,14 +65,14 @@ func (r *Redis) makeClient(name string) (conn.IInstance, error) {
 		return nil, fmt.Errorf("解析redis客户端配置错误: %v", err)
 	}
 
-	client, err := MakeRedisClient(conf)
+	client, err := NewClient(conf)
 	if err != nil {
 		return nil, fmt.Errorf("生成redis客户端失败: %v", err)
 	}
 	return &instance{client: client}, nil
 }
 
-func MakeRedisClient(conf *RedisConfig) (UniversalClient, error) {
+func NewClient(conf *RedisConfig) (UniversalClient, error) {
 	err := conf.Check()
 	if err != nil {
 		return nil, fmt.Errorf("redis客户端配置错误: %v", err)
@@ -85,9 +86,9 @@ func MakeRedisClient(conf *RedisConfig) (UniversalClient, error) {
 			Password:     conf.Password,
 			MinIdleConns: conf.MinIdleConns,
 			PoolSize:     conf.PoolSize,
-			ReadTimeout:  time.Duration(conf.ReadTimeout) * time.Millisecond,
-			WriteTimeout: time.Duration(conf.WriteTimeout) * time.Millisecond,
-			DialTimeout:  time.Duration(conf.DialTimeout) * time.Millisecond,
+			ReadTimeout:  time.Duration(conf.ReadTimeoutSec) * time.Second,
+			WriteTimeout: time.Duration(conf.WriteTimeoutSec) * time.Second,
+			DialTimeout:  time.Duration(conf.DialTimeoutSec) * time.Second,
 		})
 	} else {
 		client = redis.NewClient(&redis.Options{
@@ -97,13 +98,13 @@ func MakeRedisClient(conf *RedisConfig) (UniversalClient, error) {
 			DB:           conf.DB,
 			MinIdleConns: conf.MinIdleConns,
 			PoolSize:     conf.PoolSize,
-			ReadTimeout:  time.Duration(conf.ReadTimeout) * time.Millisecond,
-			WriteTimeout: time.Duration(conf.WriteTimeout) * time.Millisecond,
-			DialTimeout:  time.Duration(conf.DialTimeout) * time.Millisecond,
+			ReadTimeout:  time.Duration(conf.ReadTimeoutSec) * time.Second,
+			WriteTimeout: time.Duration(conf.WriteTimeoutSec) * time.Second,
+			DialTimeout:  time.Duration(conf.DialTimeoutSec) * time.Second,
 		})
 	}
 
-	if conf.EnableOpenTrace {
+	if !conf.DisableOpenTrace {
 		client.AddHook(redisTraceHook{})
 	}
 
@@ -128,9 +129,9 @@ func (redisTraceHook) BeforeProcess(ctx context.Context, cmd redis.Cmder) (conte
 	var span opentracing.Span
 	parentSpan := opentracing.SpanFromContext(ctx) // 获取父span
 	if parentSpan != nil {
-		span = opentracing.StartSpan("redis_cmds", opentracing.ChildOf(parentSpan.Context()))
+		span = opentracing.StartSpan("redis", opentracing.ChildOf(parentSpan.Context()))
 	} else {
-		span = opentracing.StartSpan("redis_cmds")
+		span = opentracing.StartSpan("redis")
 	}
 
 	return context.WithValue(ctx, redisSpanKey, span), nil
@@ -143,12 +144,12 @@ func (redisTraceHook) AfterProcess(ctx context.Context, cmd redis.Cmder) error {
 	}
 	defer span.Finish()
 
+	span.SetTag("cmd", cmd.FullName())
+	span.LogFields(open_log.Object("args", cmd.Args()))
 	if cmd.Err() != nil && cmd.Err() != redis.Nil {
 		span.SetTag("error", true)
-		span.SetTag("err", cmd.Err())
+		span.LogFields(open_log.Error(cmd.Err()))
 	}
-	span.SetTag("cmd", cmd.FullName())
-	span.SetTag("args", cmd.Args())
 	return nil
 }
 
@@ -181,18 +182,18 @@ func (redisTraceHook) AfterProcessPipeline(ctx context.Context, cmds []redis.Cmd
 			}
 
 			sp.SetTag("error", true)
-			sp.SetTag("err", cmd.Err())
+			sp.LogFields(open_log.Error(cmd.Err()))
 		}
 		sp.SetTag("cmd", cmd.FullName())
-		sp.SetTag("args", cmd.Args())
+		sp.LogFields(open_log.Object("args", cmd.Args()))
 		sp.Finish()
 	}
 
 	if err != nil {
 		span.SetTag("error", true)
-		span.SetTag("err", err.Error())
+		span.LogFields(open_log.Error(err))
 	}
 
-	span.SetTag("cmd count", len(cmds))
+	span.LogFields(open_log.Int("cmd_count", len(cmds)))
 	return nil
 }
