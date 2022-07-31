@@ -6,31 +6,47 @@
 
 > 此组件基于模块 [xorm.io/xorm](https://gitea.com/xorm/xorm)
 
-```text
-xorm.IXorm                  组件接口
-xorm.NewXorm                创建xorm组件
+```go
+func main() {
+    app := zapp.NewApp("test")
+    defer app.Exit()
 
-c.GetXorm(name ...string)           获取xorm引擎
+    creator := xorm.NewXormCreator(app) // 创建建造者
+
+    client := creator.GetXorm("default") // 通过建造者获取客户端
+    client.Close()
+}
 ``` 
 
 # 配置
 
 > 默认组件类型为 `xorm`, 完整配置说明参考 [Config](./config.go)
 
-```toml
-[components.xorm.default]
-# 驱动
-Driver = "sqllite3"
-# 连接源
-Source = "test.db"
++ mysql
+
+```yaml
+components:
+  xorm:
+    default:
+      Driver: mysql # 驱动, 支持 mysql, postgres, sqlite3, mssql
+      Source: 'user:passwd@tcp(localhost:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local' # 连接源
+      MaxIdleConns: 2 # 最大空闲连接数
+      MaxOpenConns: 5 # 最大连接池个数
+      ConnMaxLifetimeSec: 0 # 最大续航时间, 秒, 0表示无限
+      TableMapperRule: 'GonicMapper' # 表映射规则, 可选 SnakeMapper, SameMapper, GonicMapper, 默认为 GonicMapper
+      ColumnMapperRule: 'GonicMapper' # 列映射规则, 可选 SnakeMapper, SameMapper, GonicMapper, 默认为 GonicMapper
+      DisableOpenTrace: false # 关闭开放链路追踪
+      TZ: Asia/Shanghai # 时区
 ```
 
-```toml
-[components.xorm.default]
-# 驱动
-Driver = "mysql"
-# 连接源
-Source = "user:passwd@tcp(localhost:3306)/dbname?charset=utf8mb4&parseTime=True&loc=Local"
++ sqllite3
+
+```yaml
+components:
+  xorm:
+    default:
+      Driver: sqllite3 # 驱动
+      Source: test.db # 连接源
 ```
 
 # 驱动支持

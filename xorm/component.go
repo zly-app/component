@@ -19,7 +19,7 @@ import (
 	_ "github.com/lib/pq"                // postgres
 	_ "github.com/mattn/go-sqlite3"      // sqlite
 	"github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/log"
+	open_log "github.com/opentracing/opentracing-go/log"
 	"github.com/zly-app/zapp/pkg/utils"
 	"xorm.io/xorm"
 	"xorm.io/xorm/contexts"
@@ -35,9 +35,9 @@ type Xorm struct {
 	componentType core.ComponentType
 }
 
-type IXorm interface {
+type IXormCreator interface {
 	// 获取
-	GetXorm(name ...string) *xorm.Engine
+	GetXorm(name string) *xorm.Engine
 	// 释放
 	Close()
 }
@@ -50,8 +50,8 @@ func (i *instance) Close() {
 	_ = i.Engine.Close()
 }
 
-// 创建xorm组件
-func NewXorm(app core.IApp, componentType ...core.ComponentType) IXorm {
+// 创建xorm建造者
+func NewXormCreator(app core.IApp, componentType ...core.ComponentType) IXormCreator {
 	x := &Xorm{
 		app:           app,
 		conn:          conn.NewConn(),
@@ -63,8 +63,8 @@ func NewXorm(app core.IApp, componentType ...core.ComponentType) IXorm {
 	return x
 }
 
-func (x *Xorm) GetXorm(name ...string) *xorm.Engine {
-	return x.conn.GetInstance(x.makeClient, name...).(*instance).Engine
+func (x *Xorm) GetXorm(name string) *xorm.Engine {
+	return x.conn.GetInstance(x.makeClient, name).(*instance).Engine
 }
 
 func (x *Xorm) makeClient(name string) (conn.IInstance, error) {
@@ -83,7 +83,7 @@ func (x *Xorm) makeClient(name string) (conn.IInstance, error) {
 	}
 	e.SetMaxIdleConns(conf.MaxIdleConns)
 	e.SetMaxOpenConns(conf.MaxOpenConns)
-	e.SetConnMaxLifetime(time.Duration(conf.ConnMaxLifetime) * time.Millisecond)
+	e.SetConnMaxLifetime(time.Duration(conf.ConnMaxLifetimeSec) * time.Second)
 
 	e.SetTableMapper(x.makeNameMapper(conf.TableMapperRule))
 	e.SetColumnMapper(x.makeNameMapper(conf.ColumnMapperRule))
@@ -92,7 +92,7 @@ func (x *Xorm) makeClient(name string) (conn.IInstance, error) {
 		e.SetTZLocation(l)
 	}
 
-	if conf.EnableOpenTrace {
+	if !conf.DisableOpenTrace {
 		e.AddHook(x)
 	}
 	return &instance{e}, nil
@@ -137,12 +137,11 @@ func (x *Xorm) AfterProcess(c *contexts.ContextHook) error {
 	}
 	defer span.Finish()
 
-	if c.Err != nil {
-		span.LogFields(log.Bool("error", true))
-		span.LogFields(log.String("err", c.Err.Error()))
-	}
-
 	span.SetTag("sql", c.SQL)
-	span.LogFields(log.Object("args", c.Args))
+	span.LogFields(open_log.Object("args", c.Args))
+	if c.Err != nil {
+		span.SetTag("error", true)
+		span.LogFields(open_log.Error(c.Err))
+	}
 	return nil
 }

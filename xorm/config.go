@@ -19,37 +19,37 @@ const DefaultComponentType core.ComponentType = "xorm"
 
 const (
 	// 默认最大空闲连接数
-	defaultMaxIdleConns = 3
+	defaultMaxIdleConns = 2
 	// 默认最大连接池个数
-	defaultMaxOpenConns = 10
+	defaultMaxOpenConns = 5
 	// 默认最大续航时间
-	defaultConnMaxLifetime = 0
+	defaultConnMaxLifetimeSec = 0
 	// 默认表映射规则
 	defaultTableMapperRule = "GonicMapper"
 	// 默认列映射规则
 	defaultColumnMapperRule = "GonicMapper"
 	// 默认启用开放链路追踪
-	defaultEnableOpenTrace = false
+	defaultDisableOpenTrace = false
 	// 默认时区
 	defTZ = "Asia/Shanghai"
 )
 
 // xorm配置
 type XormConfig struct {
-	Driver           string // 驱动
-	Source           string // 连接源
-	MaxIdleConns     int    // 最大空闲连接数
-	MaxOpenConns     int    // 最大连接池个数
-	ConnMaxLifetime  int    // 最大续航时间(毫秒, 0表示无限
-	TableMapperRule  string // 表映射规则, 可选 SnakeMapper, SameMapper, GonicMapper, 默认为 GonicMapper
-	ColumnMapperRule string // 列映射规则, 可选 SnakeMapper, SameMapper, GonicMapper, 默认为 GonicMapper
-	EnableOpenTrace  bool   // 启用开放链路追踪
-	TZ               string // 时区
+	Driver             string // 驱动
+	Source             string // 连接源
+	MaxIdleConns       int    // 最大空闲连接数
+	MaxOpenConns       int    // 最大连接池个数
+	ConnMaxLifetimeSec int    // 最大续航时间, 秒, 0表示无限
+	TableMapperRule    string // 表映射规则, 可选 SnakeMapper, SameMapper, GonicMapper, 默认为 GonicMapper
+	ColumnMapperRule   string // 列映射规则, 可选 SnakeMapper, SameMapper, GonicMapper, 默认为 GonicMapper
+	DisableOpenTrace   bool   // 关闭开放链路追踪
+	TZ                 string // 时区
 }
 
 func newConfig() *XormConfig {
 	return &XormConfig{
-		EnableOpenTrace: defaultEnableOpenTrace,
+		DisableOpenTrace: defaultDisableOpenTrace,
 	}
 }
 
@@ -66,8 +66,8 @@ func (conf *XormConfig) Check() error {
 	if conf.MaxOpenConns < 1 {
 		conf.MaxOpenConns = defaultMaxOpenConns
 	}
-	if conf.ConnMaxLifetime < 1 {
-		conf.ConnMaxLifetime = defaultConnMaxLifetime
+	if conf.ConnMaxLifetimeSec < 1 {
+		conf.ConnMaxLifetimeSec = defaultConnMaxLifetimeSec
 	}
 	if conf.TableMapperRule == "" {
 		conf.TableMapperRule = defaultTableMapperRule
