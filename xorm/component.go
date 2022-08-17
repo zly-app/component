@@ -37,13 +37,13 @@ type Xorm struct {
 
 type IXormCreator interface {
 	// 获取
-	GetXorm(name string) *xorm.Engine
+	GetXorm(name string) *Engine
 	// 释放
 	Close()
 }
 
 type instance struct {
-	*xorm.Engine
+	*Engine
 }
 
 func (i *instance) Close() {
@@ -63,7 +63,7 @@ func NewXormCreator(app core.IApp, componentType ...core.ComponentType) IXormCre
 	return x
 }
 
-func (x *Xorm) GetXorm(name string) *xorm.Engine {
+func (x *Xorm) GetXorm(name string) *Engine {
 	return x.conn.GetInstance(x.makeClient, name).(*instance).Engine
 }
 
