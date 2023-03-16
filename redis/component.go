@@ -17,6 +17,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/core"
+	"github.com/zly-app/zapp/logger"
 )
 
 type IRedisCreator interface {
@@ -101,14 +102,13 @@ func NewClient(conf *RedisConfig) (UniversalClient, error) {
 			DialTimeout:  time.Duration(conf.DialTimeoutSec) * time.Second,
 		})
 	}
-	// Enable tracing instrumentation.
+
 	if err := redisotel.InstrumentTracing(client); err != nil {
-		panic(err)
+		logger.Log.Error("redisotel.InstrumentTracing err", err)
 	}
 
-	// Enable metrics instrumentation.
 	if err := redisotel.InstrumentMetrics(client); err != nil {
-		panic(err)
+		logger.Log.Error("redisotel.InstrumentMetrics err", err)
 	}
 	return client, nil
 }
