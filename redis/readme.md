@@ -5,7 +5,7 @@
 
 # 说明
 
-> 此组件基于模块 [github.com/go-redis/redis/v8](https://github.com/go-redis/redis)
+> 此组件基于模块 [github.com/redis/go-redis/v9](https://github.com/go-redis/redis)
 
 ```go
 func main() {
@@ -37,44 +37,4 @@ components:
       ReadTimeoutSec: 5 # 超时, 秒
       WriteTimeoutSec: 5 # 超时, 秒
       DialTimeoutSec: 5 # 超时, 秒
-      DisableOpenTrace: false # 关闭开放链路追踪
-```
-
-# 链路追踪
-
-使用 [github.com/opentracing/opentracing-go](https://github.com/opentracing/opentracing-go) 作为链路追踪框架
-
-## 直接使用
-
-每一次操作都会自动创建独立的trace记录
-
-## 在函数中使用, 作为子span
-
-1. 将某一次操作作为子span记录
-
-```go
-func MyFun(c redis.IRedis){
-    span := opentracing.StartSpan("my_fun") // 创建span
-    defer span.Finish() // 别忘记关闭
-    ctx := opentracing.ContextWithSpan(context.Background(), span) // 将span存入ctx
-
-    var a interface{}
-    _, _ = c.GetRedis().Get(ctx, "a").Result() // 设置ctx, 会根据ctx中带的span自动生成子span
-}
-```
-
-2. 将pipeline中的所有操作作为子span记录
-
-```go
-func MyFun(c redis.IRedis){
-    span := opentracing.StartSpan("my_fun") // 创建span
-    defer span.Finish() // 别忘记关闭
-    ctx := opentracing.ContextWithSpan(context.Background(), span) // 将span存入ctx
-
-    var a interface{}
-    _, _ = c.GetRedis().Pipelined(ctx, // 设置ctx, pipeline中的每个操作都会自动生成一个子span
-        func(pipe redis.Pipeliner) error {
-            return nil
-        })
-}
 ```

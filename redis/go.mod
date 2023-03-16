@@ -3,7 +3,7 @@ module github.com/zly-app/component/redis
 go 1.15
 
 require (
-	github.com/go-redis/redis/v8 v8.4.9
-	github.com/opentracing/opentracing-go v1.2.0
-	github.com/zly-app/zapp v1.0.12
+	github.com/redis/go-redis/extra/redisotel/v9 v9.0.2
+	github.com/redis/go-redis/v9 v9.0.2
+	github.com/zly-app/zapp v1.3.2
 )

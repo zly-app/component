@@ -9,14 +9,12 @@
 package redis
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"time"
 
-	"github.com/go-redis/redis/v8"
-	"github.com/opentracing/opentracing-go"
-	open_log "github.com/opentracing/opentracing-go/log"
+	"github.com/redis/go-redis/extra/redisotel/v9"
+	"github.com/redis/go-redis/v9"
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/core"
 )
@@ -103,97 +101,18 @@ func NewClient(conf *RedisConfig) (UniversalClient, error) {
 			DialTimeout:  time.Duration(conf.DialTimeoutSec) * time.Second,
 		})
 	}
-
-	if !conf.DisableOpenTrace {
-		client.AddHook(redisTraceHook{})
+	// Enable tracing instrumentation.
+	if err := redisotel.InstrumentTracing(client); err != nil {
+		panic(err)
 	}
 
+	// Enable metrics instrumentation.
+	if err := redisotel.InstrumentMetrics(client); err != nil {
+		panic(err)
+	}
 	return client, nil
 }
 
 func (r *Redis) Close() {
 	r.conn.CloseAll()
-}
-
-// -------------
-//  redis  hook
-// -------------
-
-type contextKey struct{}
-
-var redisSpanKey = &contextKey{}
-
-type redisTraceHook struct{}
-
-func (redisTraceHook) BeforeProcess(ctx context.Context, cmd redis.Cmder) (context.Context, error) {
-	var span opentracing.Span
-	parentSpan := opentracing.SpanFromContext(ctx) // 获取父span
-	if parentSpan != nil {
-		span = opentracing.StartSpan("redis", opentracing.ChildOf(parentSpan.Context()))
-	} else {
-		span = opentracing.StartSpan("redis")
-	}
-
-	return context.WithValue(ctx, redisSpanKey, span), nil
-}
-
-func (redisTraceHook) AfterProcess(ctx context.Context, cmd redis.Cmder) error {
-	span, ok := ctx.Value(redisSpanKey).(opentracing.Span)
-	if !ok {
-		return nil
-	}
-	defer span.Finish()
-
-	span.SetTag("cmd", cmd.FullName())
-	span.LogFields(open_log.Object("args", cmd.Args()))
-	if cmd.Err() != nil && cmd.Err() != redis.Nil {
-		span.SetTag("error", true)
-		span.LogFields(open_log.Error(cmd.Err()))
-	}
-	return nil
-}
-
-func (redisTraceHook) BeforeProcessPipeline(ctx context.Context, cmds []redis.Cmder) (context.Context, error) {
-	var span opentracing.Span
-	parentSpan := opentracing.SpanFromContext(ctx) // 获取父span
-	if parentSpan != nil {
-		span = opentracing.StartSpan("redis_multi_cmds", opentracing.ChildOf(parentSpan.Context()))
-	} else {
-		span = opentracing.StartSpan("redis_multi_cmds")
-	}
-
-	return context.WithValue(ctx, redisSpanKey, span), nil
-}
-
-func (redisTraceHook) AfterProcessPipeline(ctx context.Context, cmds []redis.Cmder) error {
-	span, ok := ctx.Value(redisSpanKey).(opentracing.Span)
-	if !ok {
-		return nil
-	}
-	defer span.Finish()
-
-	var err error
-	for _, cmd := range cmds {
-		sp := opentracing.StartSpan(cmd.FullName(), opentracing.ChildOf(span.Context()))
-
-		if cmd.Err() != nil && cmd.Err() != redis.Nil {
-			if err == nil {
-				err = cmd.Err()
-			}
-
-			sp.SetTag("error", true)
-			sp.LogFields(open_log.Error(cmd.Err()))
-		}
-		sp.SetTag("cmd", cmd.FullName())
-		sp.LogFields(open_log.Object("args", cmd.Args()))
-		sp.Finish()
-	}
-
-	if err != nil {
-		span.SetTag("error", true)
-		span.LogFields(open_log.Error(err))
-	}
-
-	span.LogFields(open_log.Int("cmd_count", len(cmds)))
-	return nil
 }
