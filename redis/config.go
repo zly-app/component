@@ -10,12 +10,7 @@ package redis
 
 import (
 	"errors"
-
-	"github.com/zly-app/zapp/core"
 )
-
-// 默认组件类型
-const DefaultComponentType core.ComponentType = "redis"
 
 const (
 	// 默认最小空闲连接数
