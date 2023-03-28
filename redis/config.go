@@ -44,7 +44,7 @@ type RedisConfig struct {
 	WriteTimeoutSec int // 超时, 秒
 }
 
-func newRedisConfig() *RedisConfig {
+func NewRedisConfig() *RedisConfig {
 	return &RedisConfig{
 		ReadTimeoutSec:  defReadTimeoutSec,
 		WriteTimeoutSec: defWriteTimeoutSec,

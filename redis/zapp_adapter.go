@@ -61,7 +61,7 @@ func (r *RedisCreatorAdapter) GetRedis(name string) UniversalClient {
 }
 
 func (r *RedisCreatorAdapter) makeClient(name string) (conn.IInstance, error) {
-	conf := newRedisConfig()
+	conf := NewRedisConfig()
 	err := r.app.GetConfig().ParseComponentConfig(r.componentType, name, conf)
 	if err != nil {
 		return nil, fmt.Errorf("解析redis客户端配置错误: %v", err)
