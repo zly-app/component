@@ -16,12 +16,15 @@ import (
 	rconf "github.com/seefan/gossdb/v2/conf"
 	"github.com/seefan/gossdb/v2/pool"
 	"github.com/zly-app/zapp/component/conn"
+	"github.com/zly-app/zapp/consts"
 	"github.com/zly-app/zapp/core"
 )
 
 type ISsdb interface {
 	// 获取客户端, 使用完后记得关闭
 	GetSsdb(name ...string) *pool.Client
+	// 获取客户端, 使用完后记得关闭
+	GetDefSsdb() *pool.Client
 	// 关闭
 	Close()
 }
@@ -55,6 +58,10 @@ func NewSsdb(app core.IApp, componentType ...core.ComponentType) ISsdb {
 
 func (s *Ssdb) GetSsdb(name ...string) *pool.Client {
 	return s.conn.GetInstance(s.makeClient, name...).(*instance).Connectors.GetClient()
+}
+
+func (s *Ssdb) GetDefSsdb() *pool.Client {
+	return s.conn.GetInstance(s.makeClient, consts.DefaultComponentName).(*instance).Connectors.GetClient()
 }
 
 func (s *Ssdb) makeClient(name string) (conn.IInstance, error) {

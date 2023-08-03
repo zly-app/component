@@ -6,6 +6,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/zly-app/zapp/component/conn"
+	"github.com/zly-app/zapp/consts"
 	"github.com/zly-app/zapp/core"
 
 	_ "github.com/ClickHouse/clickhouse-go" // clickhosue
@@ -24,6 +25,8 @@ type Sqlx struct {
 type ISqlx interface {
 	// 获取
 	GetSqlx(name ...string) *sqlx.DB
+	// 获取
+	GetDefSqlx() *sqlx.DB
 	// 释放
 	Close()
 }
@@ -49,6 +52,10 @@ func NewSqlx(app core.IApp, componentType ...core.ComponentType) ISqlx {
 
 func (s *Sqlx) GetSqlx(name ...string) *sqlx.DB {
 	return s.conn.GetInstance(s.makeClient, name...).(*instance).DB
+}
+
+func (s *Sqlx) GetDefSqlx() *sqlx.DB {
+	return s.conn.GetInstance(s.makeClient, consts.DefaultComponentName).(*instance).DB
 }
 
 func (s *Sqlx) makeClient(name string) (conn.IInstance, error) {

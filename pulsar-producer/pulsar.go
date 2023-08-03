@@ -9,12 +9,14 @@ import (
 	"github.com/apache/pulsar-client-go/pulsar"
 	"github.com/apache/pulsar-client-go/pulsar/log"
 	"github.com/zly-app/zapp/component/conn"
+	"github.com/zly-app/zapp/consts"
 	"github.com/zly-app/zapp/core"
 )
 
 // pulsar 生产者建造者
 type IPulsarProducerCreator interface {
 	GetPulsarProducer(name ...string) IPulsarProducer
+	GetDefPulsarProducer() IPulsarProducer
 	Close()
 }
 
@@ -39,6 +41,10 @@ type ProducerCreator struct {
 
 func (p *ProducerCreator) GetPulsarProducer(name ...string) IPulsarProducer {
 	return p.conn.GetInstance(p.makeProducer, name...).(IPulsarProducer)
+}
+
+func (p *ProducerCreator) GetDefPulsarProducer() IPulsarProducer {
+	return p.conn.GetInstance(p.makeProducer, consts.DefaultComponentName).(IPulsarProducer)
 }
 
 func (p *ProducerCreator) Close() { p.conn.CloseAll() }

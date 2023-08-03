@@ -7,6 +7,7 @@ import (
 
 	"github.com/Shopify/sarama"
 	"github.com/zly-app/zapp/component/conn"
+	"github.com/zly-app/zapp/consts"
 	"github.com/zly-app/zapp/core"
 	"golang.org/x/net/proxy"
 )
@@ -14,8 +15,12 @@ import (
 type IKafkaProducer interface {
 	// 获取kafka同步生产者
 	GetKafkaSyncProducer(name ...string) SyncProducer
+	// 获取kafka同步生产者
+	GetDefKafkaSyncProducer() SyncProducer
 	// 获取kafka异步生产者
 	GetKafkaAsyncProducer(name ...string) AsyncProducer
+	// 获取kafka异步生产者
+	GetDefKafkaAsyncProducer() AsyncProducer
 	// 关闭
 	Close()
 }
@@ -79,8 +84,16 @@ func (k *KafkaProducer) GetKafkaSyncProducer(name ...string) SyncProducer {
 	return k.connSync.GetInstance(k.makeSyncClient, name...).(*syncInstance).syncProducer
 }
 
+func (k *KafkaProducer) GetDefKafkaSyncProducer() SyncProducer {
+	return k.connSync.GetInstance(k.makeSyncClient, consts.DefaultConfigFiles).(*syncInstance).syncProducer
+}
+
 func (k *KafkaProducer) GetKafkaAsyncProducer(name ...string) AsyncProducer {
 	return k.connAsync.GetInstance(k.makeAsyncClient, name...).(*asyncInstance).asyncProducer
+}
+
+func (k *KafkaProducer) GetDefKafkaAsyncProducer() AsyncProducer {
+	return k.connAsync.GetInstance(k.makeAsyncClient, consts.DefaultComponentName).(*asyncInstance).asyncProducer
 }
 
 // 生成配置

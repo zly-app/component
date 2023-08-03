@@ -20,6 +20,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"      // sqlite
 	"github.com/opentracing/opentracing-go"
 	open_log "github.com/opentracing/opentracing-go/log"
+	"github.com/zly-app/zapp/consts"
 	"github.com/zly-app/zapp/pkg/utils"
 	"xorm.io/xorm"
 	"xorm.io/xorm/contexts"
@@ -38,6 +39,8 @@ type Xorm struct {
 type IXormCreator interface {
 	// 获取
 	GetXorm(name string) *Engine
+	// 获取
+	GetDefXorm() *Engine
 	// 释放
 	Close()
 }
@@ -65,6 +68,10 @@ func NewXormCreator(app core.IApp, componentType ...core.ComponentType) IXormCre
 
 func (x *Xorm) GetXorm(name string) *Engine {
 	return x.conn.GetInstance(x.makeClient, name).(*instance).Engine
+}
+
+func (x *Xorm) GetDefXorm() *Engine {
+	return x.conn.GetInstance(x.makeClient, consts.DefaultComponentName).(*instance).Engine
 }
 
 func (x *Xorm) makeClient(name string) (conn.IInstance, error) {

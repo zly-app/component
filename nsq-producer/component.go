@@ -14,12 +14,15 @@ import (
 
 	"github.com/nsqio/go-nsq"
 	"github.com/zly-app/zapp/component/conn"
+	"github.com/zly-app/zapp/consts"
 	"github.com/zly-app/zapp/core"
 )
 
 type INsqProducer interface {
 	// 获取nsq发布者
 	GetNsqProducer(name ...string) *nsq.Producer
+	// 获取nsq发布者
+	GetDefNsqProducer() *nsq.Producer
 	// 关闭
 	Close()
 }
@@ -52,6 +55,10 @@ func NewNsqProducer(app core.IApp, componentType ...core.ComponentType) INsqProd
 
 func (r *NsqProducer) GetNsqProducer(name ...string) *nsq.Producer {
 	return r.conn.GetInstance(r.makeClient, name...).(*instance).producer
+}
+
+func (r *NsqProducer) GetDefNsqProducer() *nsq.Producer {
+	return r.conn.GetInstance(r.makeClient, consts.DefaultComponentName).(*instance).producer
 }
 
 func (r *NsqProducer) makeClient(name string) (conn.IInstance, error) {

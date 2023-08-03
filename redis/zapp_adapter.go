@@ -12,6 +12,7 @@ import (
 	"fmt"
 
 	"github.com/zly-app/zapp/component/conn"
+	"github.com/zly-app/zapp/consts"
 	"github.com/zly-app/zapp/core"
 )
 
@@ -29,6 +30,8 @@ func SetComponentType(t core.ComponentType) {
 type IRedisCreator interface {
 	// 获取redis客户端
 	GetRedis(name string) UniversalClient
+	// 获取默认redis客户端
+	GetDefRedis() UniversalClient
 	// 关闭
 	Close()
 }
@@ -58,6 +61,10 @@ func NewRedisCreator(app core.IApp) IRedisCreator {
 
 func (r *RedisCreatorAdapter) GetRedis(name string) UniversalClient {
 	return r.conn.GetInstance(r.makeClient, name).(*instance).client
+}
+
+func (r *RedisCreatorAdapter) GetDefRedis() UniversalClient {
+	return r.conn.GetInstance(r.makeClient, consts.DefaultComponentName).(*instance).client
 }
 
 func (r *RedisCreatorAdapter) makeClient(name string) (conn.IInstance, error) {

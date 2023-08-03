@@ -16,12 +16,15 @@ import (
 
 	elastic7 "github.com/olivere/elastic/v7"
 	"github.com/zly-app/zapp/component/conn"
+	"github.com/zly-app/zapp/consts"
 	"github.com/zly-app/zapp/core"
 )
 
 type IES7 interface {
 	// 获取es7客户端
 	GetES7(name ...string) *elastic7.Client
+	// 获取es7客户端
+	GetDefES7() *elastic7.Client
 	// 关闭
 	Close()
 }
@@ -55,6 +58,10 @@ func NewES7(app core.IApp, componentType ...core.ComponentType) IES7 {
 
 func (e *ES7) GetES7(name ...string) *elastic7.Client {
 	return e.conn.GetInstance(e.makeClient, name...).(*instance).Client
+}
+
+func (e *ES7) GetDefES7() *elastic7.Client {
+	return e.conn.GetInstance(e.makeClient, consts.DefaultComponentName).(*instance).Client
 }
 
 func (e *ES7) makeClient(name string) (conn.IInstance, error) {
