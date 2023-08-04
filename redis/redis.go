@@ -35,7 +35,7 @@ func NewClient(conf *RedisConfig) (UniversalClient, error) {
 		MaxRedirects:          conf.MaxRetries,
 	})
 
-	if err := redisotel.InstrumentTracing(client); err != nil {
+	if err := InstrumentTracing(client); err != nil {
 		logger.Log.Error("redisotel.InstrumentTracing err", err)
 	}
 
