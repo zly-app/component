@@ -7,6 +7,7 @@ import (
 	"net"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/spf13/cast"
 	"github.com/zly-app/zapp/pkg/utils"
@@ -52,16 +53,6 @@ func InstrumentTracing(rdb redis.UniversalClient) error {
 	default:
 		return fmt.Errorf("redisotel: %T not supported", rdb)
 	}
-}
-
-type ICmdValInterface interface {
-	Val() interface{}
-}
-type ICmdValInterfaces interface {
-	Val() []interface{}
-}
-type ICmdValString interface {
-	Val() string
 }
 
 type tracingHook struct {
@@ -224,12 +215,202 @@ func funcFileLine(pkg string) (string, string, int) {
 	return fn, file, line
 }
 
+type ICmdValInterface interface {
+	Val() interface{}
+}
+type ICmdValInterfaces interface {
+	Val() []interface{}
+}
+type ICmdValString interface {
+	Val() string
+}
+type ICmdValStrings interface {
+	Val() []string
+}
+type ICmdValInt64 interface {
+	Val() int64
+}
+type ICmdValInt64s interface {
+	Val() []int64
+}
+type ICmdValDurationCmd interface {
+	Val() time.Duration
+}
+type ICmdValTime interface {
+	Val() time.Time
+}
+type ICmdValBool interface {
+	Val() bool
+}
+type ICmdValBools interface {
+	Val() []bool
+}
+type ICmdValFloat64 interface {
+	Val() float64
+}
+type ICmdValFloat64s interface {
+	Val() []float64
+}
+type ICmdValKVs interface {
+	Val() []redis.KeyValue
+}
+type ICmdValMapString interface {
+	Val() map[string]string
+}
+type ICmdValMapInt64 interface {
+	Val() map[string]int64
+}
+type ICmdValMapStruct interface {
+	Val() map[string]struct{}
+}
+type ICmdValZs interface {
+	Val() []redis.Z
+}
+
 func getCmdVal(cmd redis.Cmder) string {
 	switch v := cmd.(type) {
 	case ICmdValInterface:
 		return cast.ToString(v.Val())
+	case ICmdValInterfaces:
+		vv := v.Val()
+		if len(vv) == 0 {
+			return ""
+		}
+
+		var buff bytes.Buffer
+		for _, v := range vv {
+			buff.WriteByte('\n')
+			buff.WriteString(cast.ToString(v))
+		}
+		return buff.String()
 	case ICmdValString:
 		return cast.ToString(v.Val())
+	case ICmdValStrings:
+		vv := v.Val()
+		if len(vv) == 0 {
+			return ""
+		}
+
+		var buff bytes.Buffer
+		for _, v := range vv {
+			buff.WriteByte('\n')
+			buff.WriteString(cast.ToString(v))
+		}
+		return buff.String()
+	case ICmdValInt64:
+		return cast.ToString(v.Val())
+	case ICmdValInt64s:
+		vv := v.Val()
+		if len(vv) == 0 {
+			return ""
+		}
+
+		var buff bytes.Buffer
+		for _, v := range vv {
+			buff.WriteByte('\n')
+			buff.WriteString(cast.ToString(v))
+		}
+		return buff.String()
+	case ICmdValDurationCmd:
+		return cast.ToString(int64(v.Val())) + "," + v.Val().String()
+	case ICmdValTime:
+		return cast.ToString(v.Val().UnixNano()) + "," + cast.ToString(v.Val())
+	case ICmdValBool:
+		return cast.ToString(v.Val())
+	case ICmdValBools:
+		vv := v.Val()
+		if len(vv) == 0 {
+			return ""
+		}
+
+		var buff bytes.Buffer
+		for _, v := range vv {
+			buff.WriteByte('\n')
+			buff.WriteString(cast.ToString(v))
+		}
+		return buff.String()
+	case ICmdValFloat64:
+		return cast.ToString(v.Val())
+	case ICmdValFloat64s:
+		vv := v.Val()
+		if len(vv) == 0 {
+			return ""
+		}
+
+		var buff bytes.Buffer
+		for _, v := range vv {
+			buff.WriteByte('\n')
+			buff.WriteString(cast.ToString(v))
+		}
+		return buff.String()
+	case ICmdValKVs:
+		vv := v.Val()
+		if len(vv) == 0 {
+			return ""
+		}
+
+		var buff bytes.Buffer
+		for _, v := range vv {
+			buff.WriteByte('\n')
+			buff.WriteString(cast.ToString(v.Key))
+			buff.WriteByte('=')
+			buff.WriteString(cast.ToString(v.Value))
+		}
+		return buff.String()
+	case ICmdValMapString:
+		vv := v.Val()
+		if len(vv) == 0 {
+			return ""
+		}
+
+		var buff bytes.Buffer
+		for k, v := range vv {
+			buff.WriteByte('\n')
+			buff.WriteString(cast.ToString(k))
+			buff.WriteByte('=')
+			buff.WriteString(cast.ToString(v))
+		}
+		return buff.String()
+	case ICmdValMapInt64:
+		vv := v.Val()
+		if len(vv) == 0 {
+			return ""
+		}
+
+		var buff bytes.Buffer
+		for k, v := range vv {
+			buff.WriteByte('\n')
+			buff.WriteString(cast.ToString(k))
+			buff.WriteByte('=')
+			buff.WriteString(cast.ToString(v))
+		}
+		return buff.String()
+	case ICmdValMapStruct:
+		vv := v.Val()
+		if len(vv) == 0 {
+			return ""
+		}
+
+		var buff bytes.Buffer
+		for k := range vv {
+			buff.WriteByte('\n')
+			buff.WriteString(cast.ToString(k))
+		}
+		return buff.String()
+	case ICmdValZs:
+		vv := v.Val()
+		if len(vv) == 0 {
+			return ""
+		}
+
+		var buff bytes.Buffer
+		for _, v := range vv {
+			buff.WriteByte('\n')
+			buff.WriteString(cast.ToString(v.Member))
+			buff.WriteByte('=')
+			buff.WriteString(cast.ToString(v.Score))
+		}
+		return buff.String()
 	case *redis.Cmd:
 		return cast.ToString(v.Val())
 	case *redis.SliceCmd:
@@ -240,11 +421,10 @@ func getCmdVal(cmd redis.Cmder) string {
 
 		var buff bytes.Buffer
 		for _, v := range vv {
+			buff.WriteByte('\n')
 			buff.WriteString(cast.ToString(v))
-			buff.WriteByte(',')
 		}
-		bs := buff.Bytes()
-		return string(bs[:len(bs)-1])
+		return buff.String()
 	}
 	return cmd.String()
 }
