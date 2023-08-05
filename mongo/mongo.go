@@ -10,15 +10,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type IMongoCreator interface {
-	// 获取mongo客户端
-	GetMongo(name string) *Client
-	// 获取默认mongo客户端
-	GetDefMongo() *Client
-	// 关闭
-	Close()
-}
-
 // 创建一个客户端
 func NewClient(conf *MongoConfig) (*Client, error) {
 	err := conf.Check()
@@ -36,6 +27,7 @@ func NewClient(conf *MongoConfig) (*Client, error) {
 		ConnectTimeout:  &connectTimeout,
 		Timeout:         &timeout,
 		MaxConnIdleTime: &idleTimeout,
+		Direct:          &conf.Direct,
 	}
 	if conf.UserName != "" {
 		opt.Auth = &options.Credential{
