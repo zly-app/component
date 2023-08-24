@@ -25,29 +25,29 @@ const (
 	instrumName = "github.com/zly-app/component/redis"
 )
 
-func InstrumentTracing(rdb redis.UniversalClient) error {
+func InstrumentTracing(dbname string, rdb redis.UniversalClient) error {
 	switch rdb := rdb.(type) {
 	case *redis.Client:
 		opt := rdb.Options()
 		connString := formatDBConnString(opt.Network, opt.Addr)
-		rdb.AddHook(newTracingHook(connString))
+		rdb.AddHook(newTracingHook(dbname, connString))
 		return nil
 	case *redis.ClusterClient:
-		rdb.AddHook(newTracingHook(""))
+		rdb.AddHook(newTracingHook(dbname, ""))
 
 		rdb.OnNewNode(func(rdb *redis.Client) {
 			opt := rdb.Options()
 			connString := formatDBConnString(opt.Network, opt.Addr)
-			rdb.AddHook(newTracingHook(connString))
+			rdb.AddHook(newTracingHook(dbname, connString))
 		})
 		return nil
 	case *redis.Ring:
-		rdb.AddHook(newTracingHook(""))
+		rdb.AddHook(newTracingHook(dbname, ""))
 
 		rdb.OnNewNode(func(rdb *redis.Client) {
 			opt := rdb.Options()
 			connString := formatDBConnString(opt.Network, opt.Addr)
-			rdb.AddHook(newTracingHook(connString))
+			rdb.AddHook(newTracingHook(dbname, connString))
 		})
 		return nil
 	default:
@@ -58,13 +58,15 @@ func InstrumentTracing(rdb redis.UniversalClient) error {
 type tracingHook struct {
 	tracer   trace.Tracer
 	spanOpts []trace.SpanStartOption
+	dbname   string
 }
 
 var _ redis.Hook = (*tracingHook)(nil)
 
-func newTracingHook(connString string) *tracingHook {
+func newTracingHook(dbname, connString string) *tracingHook {
 	t := &tracingHook{}
 
+	t.dbname = dbname
 	t.tracer = otel.GetTracerProvider().Tracer(
 		instrumName,
 		trace.WithInstrumentationVersion("semver:"+redis.Version()),
@@ -72,6 +74,7 @@ func newTracingHook(connString string) *tracingHook {
 
 	t.spanOpts = []trace.SpanStartOption{
 		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(semconv.DBNameKey.String(dbname)),
 	}
 	if connString != "" {
 		t.spanOpts = append(t.spanOpts, trace.WithAttributes(semconv.DBConnectionStringKey.String(connString)))
@@ -85,7 +88,7 @@ func (th *tracingHook) DialHook(hook redis.DialHook) redis.DialHook {
 			return hook(ctx, network, addr)
 		}
 
-		ctx, span := th.tracer.Start(ctx, "redis.dial", th.spanOpts...)
+		ctx, span := th.tracer.Start(ctx, "redis."+th.dbname+" | dial", th.spanOpts...)
 		defer span.End()
 
 		conn, err := hook(ctx, network, addr)
@@ -115,7 +118,7 @@ func (th *tracingHook) ProcessHook(hook redis.ProcessHook) redis.ProcessHook {
 		opts := th.spanOpts
 		opts = append(opts, trace.WithAttributes(attrs...))
 
-		ctx, span := th.tracer.Start(ctx, cmd.FullName(), opts...)
+		ctx, span := th.tracer.Start(ctx, "redis."+th.dbname+" | "+cmd.FullName(), opts...)
 		defer span.End()
 
 		cmdString := rediscmd.CmdString(cmd)
@@ -152,7 +155,7 @@ func (th *tracingHook) ProcessPipelineHook(
 		opts := th.spanOpts
 		opts = append(opts, trace.WithAttributes(attrs...))
 
-		ctx, span := th.tracer.Start(ctx, "redis.pipeline", opts...)
+		ctx, span := th.tracer.Start(ctx, "redis."+th.dbname+" | pipeline", opts...)
 		defer span.End()
 
 		cmdStrings := make([]string, 1, len(cmds)+1)
