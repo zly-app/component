@@ -11,17 +11,21 @@ package xorm
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"strings"
 	"time"
 
+	"github.com/bytedance/sonic"
 	_ "github.com/denisenkom/go-mssqldb" // mssql
 	_ "github.com/go-sql-driver/mysql"   // mysql
 	_ "github.com/lib/pq"                // postgres
 	_ "github.com/mattn/go-sqlite3"      // sqlite
-	"github.com/opentracing/opentracing-go"
-	open_log "github.com/opentracing/opentracing-go/log"
 	"github.com/zly-app/zapp/consts"
 	"github.com/zly-app/zapp/pkg/utils"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
+	"go.opentelemetry.io/otel/trace"
 	"xorm.io/xorm"
 	"xorm.io/xorm/contexts"
 	"xorm.io/xorm/names"
@@ -34,6 +38,10 @@ type Xorm struct {
 	app           core.IApp
 	conn          *conn.Conn
 	componentType core.ComponentType
+	name          string
+
+	tracer   trace.Tracer
+	spanOpts []trace.SpanStartOption
 }
 
 type IXormCreator interface {
@@ -75,6 +83,7 @@ func (x *Xorm) GetDefXorm() *Engine {
 }
 
 func (x *Xorm) makeClient(name string) (conn.IInstance, error) {
+	x.name = name
 	conf := newConfig()
 	err := x.app.GetConfig().ParseComponentConfig(x.componentType, name, conf)
 	if err == nil {
@@ -101,6 +110,13 @@ func (x *Xorm) makeClient(name string) (conn.IInstance, error) {
 
 	if !conf.DisableOpenTrace {
 		e.AddHook(x)
+
+		const instrumName = "github.com/zly-app/component/xorm"
+		x.tracer = otel.GetTracerProvider().Tracer(instrumName)
+		x.spanOpts = []trace.SpanStartOption{
+			trace.WithSpanKind(trace.SpanKindClient),
+			trace.WithAttributes(semconv.DBNameKey.String(name)),
+		}
 	}
 	return &instance{e}, nil
 }
@@ -125,30 +141,60 @@ func (x *Xorm) Close() {
 //  xorm  hook
 // -------------
 
-type contextKey struct{}
-
-var xormSpanKey = &contextKey{}
-
 func (x *Xorm) BeforeProcess(c *contexts.ContextHook) (context.Context, error) {
-	span := utils.Trace.GetChildSpan(c.Ctx, "xorm_sql")
+	fn, file, line := funcFileLine("xorm.io/xorm")
 
-	// 存入上下文
-	c.Ctx = context.WithValue(c.Ctx, xormSpanKey, span)
-	return c.Ctx, nil
+	attrs := make([]attribute.KeyValue, 0, 8)
+	attrs = append(attrs,
+		semconv.CodeFunctionKey.String(fn),
+		semconv.CodeFilepathKey.String(file),
+		semconv.CodeLineNumberKey.Int(line),
+	)
+
+	opts := append([]trace.SpanStartOption{}, x.spanOpts...)
+	opts = append(opts, trace.WithAttributes(attrs...))
+
+	ctx, _ := x.tracer.Start(c.Ctx, "xorm_sql."+x.name, opts...)
+
+	args, _ := sonic.MarshalString(c.Args)
+	utils.Otel.CtxEvent(ctx, "send",
+		utils.OtelSpanKey("sql").String(c.SQL),
+		utils.OtelSpanKey("args").String(args),
+	)
+	return ctx, nil
 }
 
 func (x *Xorm) AfterProcess(c *contexts.ContextHook) error {
-	span, ok := c.Ctx.Value(xormSpanKey).(opentracing.Span)
-	if !ok {
-		return nil
-	}
-	defer span.Finish()
+	defer utils.Otel.CtxEnd(c.Ctx)
 
-	span.SetTag("sql", c.SQL)
-	span.LogFields(open_log.Object("args", c.Args))
 	if c.Err != nil {
-		span.SetTag("error", true)
-		span.LogFields(open_log.Error(c.Err))
+		utils.Otel.CtxErrEvent(c.Ctx, "recv", c.Err)
 	}
 	return nil
+}
+
+func funcFileLine(pkg string) (string, string, int) {
+	const depth = 16
+	var pcs [depth]uintptr
+	n := runtime.Callers(3, pcs[:])
+	ff := runtime.CallersFrames(pcs[:n])
+
+	var fn, file string
+	var line int
+	for {
+		f, ok := ff.Next()
+		if !ok {
+			break
+		}
+		fn, file, line = f.Function, f.File, f.Line
+		if !strings.Contains(fn, pkg) {
+			break
+		}
+	}
+
+	if ind := strings.LastIndexByte(fn, '/'); ind != -1 {
+		fn = fn[ind+1:]
+	}
+
+	return fn, file, line
 }
