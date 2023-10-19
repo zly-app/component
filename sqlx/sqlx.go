@@ -24,18 +24,18 @@ type Sqlx struct {
 
 type ISqlx interface {
 	// 获取
-	GetSqlx(name ...string) *sqlx.DB
+	GetSqlx(name ...string) Client
 	// 获取
-	GetDefSqlx() *sqlx.DB
+	GetDefSqlx() Client
 	// 释放
 	Close()
 }
 type instance struct {
-	*sqlx.DB
+	client Client
 }
 
 func (i *instance) Close() {
-	_ = i.DB.Close()
+	_ = i.client.GetDB().Close()
 }
 
 func NewSqlx(app core.IApp, componentType ...core.ComponentType) ISqlx {
@@ -50,12 +50,12 @@ func NewSqlx(app core.IApp, componentType ...core.ComponentType) ISqlx {
 	return s
 }
 
-func (s *Sqlx) GetSqlx(name ...string) *sqlx.DB {
-	return s.conn.GetInstance(s.makeClient, name...).(*instance).DB
+func (s *Sqlx) GetSqlx(name ...string) Client {
+	return s.conn.GetInstance(s.makeClient, name...).(*instance).client
 }
 
-func (s *Sqlx) GetDefSqlx() *sqlx.DB {
-	return s.conn.GetInstance(s.makeClient, consts.DefaultComponentName).(*instance).DB
+func (s *Sqlx) GetDefSqlx() Client {
+	return s.conn.GetInstance(s.makeClient, consts.DefaultComponentName).(*instance).client
 }
 
 func (s *Sqlx) makeClient(name string) (conn.IInstance, error) {
@@ -75,7 +75,8 @@ func (s *Sqlx) makeClient(name string) (conn.IInstance, error) {
 	db.SetMaxIdleConns(conf.MaxIdleConns)
 	db.SetMaxOpenConns(conf.MaxOpenConns)
 	db.SetConnMaxLifetime(time.Duration(conf.ConnMaxLifetime) * time.Millisecond)
-	return &instance{db}, nil
+	client := dbClient{db}
+	return &instance{client}, nil
 }
 
 func (s *Sqlx) Close() {

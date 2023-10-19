@@ -108,16 +108,15 @@ func (x *Xorm) makeClient(name string) (conn.IInstance, error) {
 		e.SetTZLocation(l)
 	}
 
-	if !conf.DisableOpenTrace {
-		e.AddHook(x)
+	e.AddHook(x)
 
-		const instrumName = "github.com/zly-app/component/xorm"
-		x.tracer = otel.GetTracerProvider().Tracer(instrumName)
-		x.spanOpts = []trace.SpanStartOption{
-			trace.WithSpanKind(trace.SpanKindClient),
-			trace.WithAttributes(semconv.DBNameKey.String(name)),
-		}
+	const instrumName = "github.com/zly-app/component/xorm"
+	x.tracer = otel.GetTracerProvider().Tracer(instrumName)
+	x.spanOpts = []trace.SpanStartOption{
+		trace.WithSpanKind(trace.SpanKindClient),
+		trace.WithAttributes(semconv.DBNameKey.String(name)),
 	}
+
 	return &instance{e}, nil
 }
 

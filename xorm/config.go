@@ -28,8 +28,6 @@ const (
 	defaultTableMapperRule = "GonicMapper"
 	// 默认列映射规则
 	defaultColumnMapperRule = "GonicMapper"
-	// 默认启用开放链路追踪
-	defaultDisableOpenTrace = false
 	// 默认时区
 	defTZ = "Asia/Shanghai"
 )
@@ -43,14 +41,11 @@ type XormConfig struct {
 	ConnMaxLifetimeSec int    // 最大续航时间, 秒, 0表示无限
 	TableMapperRule    string // 表映射规则, 可选 SnakeMapper, SameMapper, GonicMapper, 默认为 GonicMapper
 	ColumnMapperRule   string // 列映射规则, 可选 SnakeMapper, SameMapper, GonicMapper, 默认为 GonicMapper
-	DisableOpenTrace   bool   // 关闭开放链路追踪
 	TZ                 string // 时区
 }
 
 func newConfig() *XormConfig {
-	return &XormConfig{
-		DisableOpenTrace: defaultDisableOpenTrace,
-	}
+	return &XormConfig{}
 }
 
 func (conf *XormConfig) Check() error {
