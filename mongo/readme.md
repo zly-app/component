@@ -13,8 +13,6 @@ func main() {
     defer app.Exit()
 
     creator := mongo.NewMongoCreator(app) // 创建mongo建造者
-    defer creator.Close()
-
     client := creator.GetMongo("default") // 通过mongo建造者获取mongo客户端
 }
 ```

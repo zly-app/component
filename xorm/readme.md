@@ -12,9 +12,7 @@ func main() {
     defer app.Exit()
 
     creator := xorm.NewXormCreator(app) // 创建建造者
-
     client := creator.GetXorm("default") // 通过建造者获取客户端
-    client.Close()
 }
 ``` 
 

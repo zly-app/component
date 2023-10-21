@@ -12,9 +12,7 @@ func main() {
     defer app.Exit()
 
     creator := sqlx.NewSqlx(app) // 创建建造者
-
     client := creator.GetSqlx("default") // 通过建造者获取客户端
-    defer client.Close()
 }
 ``` 
 

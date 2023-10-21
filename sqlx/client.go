@@ -1,12 +1,12 @@
 package sqlx
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
-	"golang.org/x/net/context"
 )
 
 type Client interface {
