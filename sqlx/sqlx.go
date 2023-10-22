@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/consts"
 	"github.com/zly-app/zapp/core"
@@ -75,7 +76,11 @@ func (s *Sqlx) makeClient(name string) (conn.IInstance, error) {
 	db.SetMaxIdleConns(conf.MaxIdleConns)
 	db.SetMaxOpenConns(conf.MaxOpenConns)
 	db.SetConnMaxLifetime(time.Duration(conf.ConnMaxLifetime) * time.Millisecond)
-	client := dbClient{db}
+	client := dbClient{
+		db:         db,
+		clientType: string(s.componentType),
+		clientName: name,
+	}
 	return &instance{client}, nil
 }
 
