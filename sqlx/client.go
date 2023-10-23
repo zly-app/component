@@ -79,16 +79,13 @@ func (d dbClient) GetDB() *sqlx.DB { return d.db }
 func (d dbClient) Unsafe() Client  { return dbClient{db: d.db.Unsafe()} }
 
 func (d dbClient) Exec(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	meta := &filter.Meta{
-		ClientType: d.clientType,
-		ClientName: d.clientName,
-		MethodName: "Exec",
-	}
 	req := &clientReq{
 		Query: query,
 		Args:  args,
 	}
-	rsp, err := filter.TriggerClientFilter(ctx, meta, req, func(ctx context.Context, req interface{}) (rsp interface{}, err error) {
+
+	ctx, chain := filter.GetClientFilter(ctx, d.clientType, d.clientName, "Exec")
+	rsp, err := chain.Handle(ctx, req, func(ctx context.Context, req interface{}) (rsp interface{}, err error) {
 		r := req.(*clientReq)
 		result, err := d.db.ExecContext(ctx, r.Query, r.Args...)
 		if err != nil {
@@ -103,17 +100,14 @@ func (d dbClient) Exec(ctx context.Context, query string, args ...interface{}) (
 }
 
 func (d dbClient) Query(ctx context.Context, next NextFunc, query string, args ...interface{}) error {
-	meta := &filter.Meta{
-		ClientType: d.clientType,
-		ClientName: d.clientName,
-		MethodName: "Query",
-	}
 	req := &clientReq{
 		Query: query,
 		Args:  args,
 	}
 	rsp := &clientRsp{}
-	err := filter.TriggerClientFilterInject(ctx, meta, req, rsp, func(ctx context.Context, req, _ interface{}) error {
+
+	ctx, chain := filter.GetClientFilter(ctx, d.clientType, d.clientName, "Query")
+	err := chain.HandleInject(ctx, req, rsp, func(ctx context.Context, req, _ interface{}) error {
 		r := req.(*clientReq)
 		rows, err := d.db.DB.QueryContext(ctx, r.Query, r.Args...)
 		if err != nil {
@@ -136,11 +130,6 @@ func (d dbClient) Query(ctx context.Context, next NextFunc, query string, args .
 }
 
 func (d dbClient) QueryRow(ctx context.Context, dest []interface{}, query string, args ...interface{}) error {
-	meta := &filter.Meta{
-		ClientType: d.clientType,
-		ClientName: d.clientName,
-		MethodName: "QueryRow",
-	}
 	req := &clientReq{
 		Query: query,
 		Args:  args,
@@ -148,7 +137,8 @@ func (d dbClient) QueryRow(ctx context.Context, dest []interface{}, query string
 	rsp := &clientRsp{
 		DestList: dest,
 	}
-	err := filter.TriggerClientFilterInject(ctx, meta, req, rsp, func(ctx context.Context, req, rsp interface{}) error {
+	ctx, chain := filter.GetClientFilter(ctx, d.clientType, d.clientName, "QueryRow")
+	err := chain.HandleInject(ctx, req, rsp, func(ctx context.Context, req, rsp interface{}) error {
 		r := req.(*clientReq)
 		sp := rsp.(*clientRsp)
 		row := d.db.DB.QueryRowContext(ctx, r.Query, r.Args...)
@@ -158,14 +148,10 @@ func (d dbClient) QueryRow(ctx context.Context, dest []interface{}, query string
 }
 
 func (d dbClient) Transaction(ctx context.Context, fn TxFunc, opts ...TxOption) error {
-	meta := &filter.Meta{
-		ClientType: d.clientType,
-		ClientName: d.clientName,
-		MethodName: "Transaction",
-	}
 	req := &clientReq{}
 	rsp := &clientRsp{}
-	err := filter.TriggerClientFilterInject(ctx, meta, req, rsp, func(ctx context.Context, _, _ interface{}) error {
+	ctx, chain := filter.GetClientFilter(ctx, d.clientType, d.clientName, "Transaction")
+	err := chain.HandleInject(ctx, req, rsp, func(ctx context.Context, _, _ interface{}) error {
 		txOpts := new(sql.TxOptions)
 		for _, o := range opts {
 			o(txOpts)
@@ -194,11 +180,6 @@ func (d dbClient) Transaction(ctx context.Context, fn TxFunc, opts ...TxOption) 
 }
 
 func (d dbClient) Get(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
-	meta := &filter.Meta{
-		ClientType: d.clientType,
-		ClientName: d.clientName,
-		MethodName: "Get",
-	}
 	req := &clientReq{
 		Query: query,
 		Args:  args,
@@ -206,7 +187,8 @@ func (d dbClient) Get(ctx context.Context, dest interface{}, query string, args 
 	rsp := &clientRsp{
 		Dest: dest,
 	}
-	err := filter.TriggerClientFilterInject(ctx, meta, req, rsp, func(ctx context.Context, req, rsp interface{}) error {
+	ctx, chain := filter.GetClientFilter(ctx, d.clientType, d.clientName, "Get")
+	err := chain.HandleInject(ctx, req, rsp, func(ctx context.Context, req, rsp interface{}) error {
 		r := req.(*clientReq)
 		sp := rsp.(*clientRsp)
 		return d.db.GetContext(ctx, sp.Dest, r.Query, r.Args...)
@@ -215,11 +197,6 @@ func (d dbClient) Get(ctx context.Context, dest interface{}, query string, args 
 }
 
 func (d dbClient) Select(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
-	meta := &filter.Meta{
-		ClientType: d.clientType,
-		ClientName: d.clientName,
-		MethodName: "Select",
-	}
 	req := &clientReq{
 		Query: query,
 		Args:  args,
@@ -227,7 +204,8 @@ func (d dbClient) Select(ctx context.Context, dest interface{}, query string, ar
 	rsp := &clientRsp{
 		Dest: dest,
 	}
-	err := filter.TriggerClientFilterInject(ctx, meta, req, rsp, func(ctx context.Context, req, rsp interface{}) error {
+	ctx, chain := filter.GetClientFilter(ctx, d.clientType, d.clientName, "Select")
+	err := chain.HandleInject(ctx, req, rsp, func(ctx context.Context, req, rsp interface{}) error {
 		r := req.(*clientReq)
 		sp := rsp.(*clientRsp)
 		return d.db.SelectContext(ctx, sp.Dest, r.Query, r.Args...)
@@ -236,11 +214,6 @@ func (d dbClient) Select(ctx context.Context, dest interface{}, query string, ar
 }
 
 func (d dbClient) QueryToStruct(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
-	meta := &filter.Meta{
-		ClientType: d.clientType,
-		ClientName: d.clientName,
-		MethodName: "QueryToStruct",
-	}
 	req := &clientReq{
 		Query: query,
 		Args:  args,
@@ -248,7 +221,8 @@ func (d dbClient) QueryToStruct(ctx context.Context, dest interface{}, query str
 	rsp := &clientRsp{
 		Dest: dest,
 	}
-	err := filter.TriggerClientFilterInject(ctx, meta, req, rsp, func(ctx context.Context, req, rsp interface{}) error {
+	ctx, chain := filter.GetClientFilter(ctx, d.clientType, d.clientName, "QueryToStruct")
+	err := chain.HandleInject(ctx, req, rsp, func(ctx context.Context, req, rsp interface{}) error {
 		r := req.(*clientReq)
 		sp := rsp.(*clientRsp)
 		return d.db.QueryRowxContext(ctx, r.Query, r.Args...).StructScan(sp.Dest)
@@ -257,11 +231,6 @@ func (d dbClient) QueryToStruct(ctx context.Context, dest interface{}, query str
 }
 
 func (d dbClient) QueryToStructs(ctx context.Context, dest interface{}, query string, args ...interface{}) error {
-	meta := &filter.Meta{
-		ClientType: d.clientType,
-		ClientName: d.clientName,
-		MethodName: "QueryToStructs",
-	}
 	req := &clientReq{
 		Query: query,
 		Args:  args,
@@ -269,7 +238,8 @@ func (d dbClient) QueryToStructs(ctx context.Context, dest interface{}, query st
 	rsp := &clientRsp{
 		Dest: dest,
 	}
-	err := filter.TriggerClientFilterInject(ctx, meta, req, rsp, func(ctx context.Context, req, rsp interface{}) error {
+	ctx, chain := filter.GetClientFilter(ctx, d.clientType, d.clientName, "QueryToStructs")
+	err := chain.HandleInject(ctx, req, rsp, func(ctx context.Context, req, rsp interface{}) error {
 		r := req.(*clientReq)
 		sp := rsp.(*clientRsp)
 
@@ -285,14 +255,10 @@ func (d dbClient) QueryToStructs(ctx context.Context, dest interface{}, query st
 }
 
 func (d dbClient) TransactionX(ctx context.Context, fn TxxFunc, opts ...TxOption) error {
-	meta := &filter.Meta{
-		ClientType: d.clientType,
-		ClientName: d.clientName,
-		MethodName: "TransactionX",
-	}
 	req := &clientReq{}
 	rsp := &clientRsp{}
-	err := filter.TriggerClientFilterInject(ctx, meta, req, rsp, func(ctx context.Context, _, _ interface{}) error {
+	ctx, chain := filter.GetClientFilter(ctx, d.clientType, d.clientName, "TransactionX")
+	err := chain.HandleInject(ctx, req, rsp, func(ctx context.Context, _, _ interface{}) error {
 		txOpts := new(sql.TxOptions)
 		for _, o := range opts {
 			o(txOpts)
