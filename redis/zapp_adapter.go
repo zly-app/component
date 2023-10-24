@@ -81,7 +81,7 @@ func (r *RedisCreatorAdapter) makeClient(name string) (conn.IInstance, error) {
 		return nil, fmt.Errorf("创建redis客户端失败: %v", err)
 	}
 
-	if err := InstrumentTracing(name, client); err != nil {
+	if err := InstrumentTracing(string(r.componentType), name, client); err != nil {
 		logger.Log.Error("redisotel.InstrumentTracing err", err)
 	}
 
