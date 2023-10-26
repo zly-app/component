@@ -371,8 +371,8 @@ github.com/yuin/goldmark v1.1.25/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9de
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.1.32/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
-github.com/zly-app/zapp v1.3.7-0.20231023123435-a4a2bb693891 h1:7MTNOOx48y1rVDMZXtkB/fc/BIt/YJ+DyJS2/0gGW1k=
-github.com/zly-app/zapp v1.3.7-0.20231023123435-a4a2bb693891/go.mod h1:xxAyACsD1k2et8PsHV4j40HqVUQQ55sbHEt1J9jIVjU=
+github.com/zly-app/zapp v1.3.7 h1:SskfncgW780CgwKSAnU0qvzzLw1DlIRH0vWyW2TwHPs=
+github.com/zly-app/zapp v1.3.7/go.mod h1:xxAyACsD1k2et8PsHV4j40HqVUQQ55sbHEt1J9jIVjU=
 github.com/zlyuancn/zretry v0.0.0-20220514032503-d78bfd22a441/go.mod h1:nXpt3JELMAirMyc5KExlSX96ixpohjHkxHpJlhqRnUU=
 go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=

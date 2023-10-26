@@ -10,6 +10,7 @@ import (
 	"github.com/redis/go-redis/extra/rediscmd/v9"
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/cast"
+
 	"github.com/zly-app/zapp/filter"
 )
 
@@ -62,7 +63,7 @@ func (th *tracingHook) DialHook(hook redis.DialHook) redis.DialHook {
 	return func(ctx context.Context, network, addr string) (net.Conn, error) {
 		ctx, chain := filter.GetClientFilter(ctx, th.clientType, th.clientName, "Dial")
 		meta := filter.GetCallMeta(ctx)
-		meta.CallersSkip = 3
+		meta.AddCallersSkip(3)
 		req := &dialReq{
 			Network: network,
 			Addr:    addr,
@@ -94,7 +95,7 @@ func (th *tracingHook) ProcessHook(hook redis.ProcessHook) redis.ProcessHook {
 	return func(ctx context.Context, cmd redis.Cmder) error {
 		ctx, chain := filter.GetClientFilter(ctx, th.clientType, th.clientName, cmd.FullName())
 		meta := filter.GetCallMeta(ctx)
-		meta.CallersSkip = 3
+		meta.AddCallersSkip(3)
 		req := &cmdReq{
 			cmd:       cmd,
 			CmdString: rediscmd.CmdString(cmd),
@@ -128,7 +129,7 @@ func (th *tracingHook) ProcessPipelineHook(
 	return func(ctx context.Context, cmds []redis.Cmder) error {
 		ctx, chain := filter.GetClientFilter(ctx, th.clientType, th.clientName, "pipeline")
 		meta := filter.GetCallMeta(ctx)
-		meta.CallersSkip = 4
+		meta.AddCallersSkip(4)
 		cmdStrings := make([]string, len(cmds))
 		for i, c := range cmds {
 			cmdStrings[i] = rediscmd.CmdString(c)
