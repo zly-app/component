@@ -11,6 +11,8 @@ import (
 	"github.com/zly-app/zapp/filter"
 )
 
+var ErrNoRows = sql.ErrNoRows
+
 type Client interface {
 	GetDB() *sqlx.DB
 	// 不安全模式, 在安全模式下, 如果 select 语句的字段在 scan 结构体中未定义会报错
