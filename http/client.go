@@ -96,6 +96,8 @@ func (c *cli) Do(ctx context.Context, req *Request) (*Response, error) {
 
 func (c *cli) do(ctx context.Context, req *Request) (*Response, error) {
 	ctx, chain := filter.GetClientFilter(ctx, DefaultComponentType, c.Name, req.Method)
+	meta := filter.GetCallMeta(ctx)
+	meta.AddCallersSkip(1)
 
 	if req.Timeout > 0 {
 		var cancel context.CancelFunc
