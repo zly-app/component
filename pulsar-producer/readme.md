@@ -16,6 +16,7 @@ components:
   pulsar-producer:
     default:
       url: pulsar://localhost:6650
+      ListenerName: external # 监听器名称, 这里采用 external 以实现内外网分流. 参考 https://pulsar.apache.org/docs/3.2.x/concepts-multiple-advertised-listeners/
       topic: persistent://public/default/test
 ```
 

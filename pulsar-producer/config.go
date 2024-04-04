@@ -12,6 +12,8 @@ const DefaultComponentType core.ComponentType = "pulsar-producer"
 const (
 	// pulsar地址
 	defUrl = "pulsar://localhost:6650"
+	// 默认监听器名称
+	defListenerName = "external"
 	// 连接超时
 	defConnectionTimeout = 5000
 	// 操作超时
@@ -69,6 +71,7 @@ type Config struct {
 
 func NewConfig() *Config {
 	return &Config{
+		ListenerName:            defListenerName,
 		DisableBlockIfQueueFull: defDisableBlockIfQueueFull,
 		DisableBatching:         defDisableBatching,
 		KeyBatcherBuilder:       defKeyBatcherBuilder,
