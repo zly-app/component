@@ -139,10 +139,10 @@ func (c *cli) do(ctx context.Context, req *Request) (*Response, error) {
 		sp.Uncompressed = httpRsp.Uncompressed
 		if !r.RspBodyIsStream {
 			body, err := io.ReadAll(httpRsp.Body)
+			defer httpRsp.Body.Close()
 			if err != nil {
 				return nil, err
 			}
-			_ = httpRsp.Body.Close()
 			sp.Body = string(body)
 		} else {
 			sp.BodyStream = httpRsp.Body
@@ -154,4 +154,84 @@ func (c *cli) do(ctx context.Context, req *Request) (*Response, error) {
 		return nil, err
 	}
 	return rsp.(*Response), nil
+}
+
+var StdClient = newStdClient()
+
+type Transport struct{}
+type roundTripReq struct {
+	Method string
+	Path   string
+	Body   string
+
+	Header Header // 请求head
+	Params Values // 请求参数
+	req    *http.Request
+}
+type roundTripResponse struct {
+	Body       string
+	BodyStream io.ReadCloser // 注意, 读取完毕需要使用者自行调用 Close
+
+	Status        string
+	StatusCode    int
+	ContentLength int64
+	Header        Header
+	Uncompressed  bool
+	rsp           *http.Response
+}
+
+func (Transport) RoundTrip(req *http.Request) (*http.Response, error) {
+	ctx, chain := filter.GetClientFilter(req.Context(), DefaultComponentType, "std", req.Method)
+	meta := filter.GetCallMeta(ctx)
+	meta.AddCallersSkip(1)
+
+	var body []byte
+	var err error
+	if req.Body != nil {
+		body, err = io.ReadAll(req.Body)
+		req.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+		req.Body = io.NopCloser(bytes.NewReader(body))
+	}
+	r := &roundTripReq{
+		Method: req.Method,
+		Path:   req.URL.String(),
+		Body:   string(body),
+		Header: req.Header,
+		Params: req.URL.Query(),
+		req:    req,
+	}
+	rsp, err := chain.Handle(ctx, r, func(ctx context.Context, req interface{}) (rsp interface{}, err error) {
+		r := req.(*roundTripReq)
+		httpRsp, err := http.DefaultTransport.RoundTrip(r.req)
+		if err != nil {
+			return nil, err
+		}
+
+		sp := &roundTripResponse{}
+		sp.Status = httpRsp.Status
+		sp.StatusCode = httpRsp.StatusCode
+		sp.ContentLength = httpRsp.ContentLength
+		sp.Header = httpRsp.Header
+		sp.Uncompressed = httpRsp.Uncompressed
+
+		body, err := io.ReadAll(httpRsp.Body)
+		defer httpRsp.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+		sp.Body = string(body)
+		sp.rsp = httpRsp
+		return sp, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return rsp.(*roundTripResponse).rsp, nil
+}
+
+func newStdClient() *http.Client {
+	return &http.Client{Transport: Transport{}}
 }
