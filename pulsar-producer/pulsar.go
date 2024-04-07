@@ -177,12 +177,11 @@ type sendReq struct {
 	Key                 string            `json:"Key,omitempty"`
 	OrderingKey         string            `json:"OrderingKey,omitempty"`
 	Properties          map[string]string `json:"Properties,omitempty"`
-	EventTime           time.Time         `json:"EventTime,omitempty"`
 	ReplicationClusters []string          `json:"ReplicationClusters,omitempty"`
 	DisableReplication  bool              `json:"DisableReplication,omitempty"`
 	SequenceID          *int64            `json:"SequenceID,omitempty"`
 	DeliverAfter        time.Duration     `json:"DeliverAfter,omitempty"`
-	DeliverAt           time.Time         `json:"DeliverAt,omitempty"`
+	DeliverAt           *time.Time        `json:"DeliverAt,omitempty"`
 	msg                 *ProducerMessage
 }
 type sendRsp struct {
@@ -197,13 +196,14 @@ func (p *PulsarProducer) Send(ctx context.Context, msg *ProducerMessage) (Messag
 		Key:                 msg.Key,
 		OrderingKey:         msg.OrderingKey,
 		Properties:          msg.Properties,
-		EventTime:           msg.EventTime,
 		ReplicationClusters: msg.ReplicationClusters,
 		DisableReplication:  msg.DisableReplication,
 		SequenceID:          msg.SequenceID,
 		DeliverAfter:        msg.DeliverAfter,
-		DeliverAt:           msg.DeliverAt,
 		msg:                 msg,
+	}
+	if !msg.DeliverAt.IsZero() {
+		r.DeliverAt = &msg.DeliverAt
 	}
 	rsp, err := chain.Handle(ctx, r, func(ctx context.Context, req interface{}) (rsp interface{}, err error) {
 		r := req.(*sendReq)
@@ -228,13 +228,14 @@ func (p *PulsarProducer) SendAsync(ctx context.Context, msg *ProducerMessage, fn
 		Key:                 msg.Key,
 		OrderingKey:         msg.OrderingKey,
 		Properties:          msg.Properties,
-		EventTime:           msg.EventTime,
 		ReplicationClusters: msg.ReplicationClusters,
 		DisableReplication:  msg.DisableReplication,
 		SequenceID:          msg.SequenceID,
 		DeliverAfter:        msg.DeliverAfter,
-		DeliverAt:           msg.DeliverAt,
 		msg:                 msg,
+	}
+	if !msg.DeliverAt.IsZero() {
+		r.DeliverAt = &msg.DeliverAt
 	}
 	_, _ = chain.Handle(ctx, r, func(ctx context.Context, req interface{}) (rsp interface{}, err error) {
 		r := req.(*sendReq)
