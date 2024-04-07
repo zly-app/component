@@ -53,6 +53,9 @@ type Config struct {
 	ConnectionTimeout int    // 连接超时, 单位毫秒
 	OperationTimeout  int    // 操作超时, 单位毫秒
 
+	AuthBasicUser     string // 基础认证用户名, 可用于 AuthenticationProviderBasic 的认证扩展
+	AuthBasicPassword string // 基础认证密码
+
 	Topic                           string // topic, 示例: persistent://public/default/test
 	Name                            string // 生产者名, 如果为空则自动生成一个全局唯一名称
 	SendTimeout                     int    // 发送超时, 单位毫秒. -1表示禁用
