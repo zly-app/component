@@ -11,6 +11,8 @@ import (
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/consts"
 	"github.com/zly-app/zapp/core"
+	"github.com/zly-app/zapp/filter"
+	"github.com/zly-app/zapp/pkg/utils"
 )
 
 // pulsar 生产者建造者
@@ -56,7 +58,7 @@ func (p *ProducerCreator) makeProducer(name string) (conn.IInstance, error) {
 		return nil, fmt.Errorf("获取组件<%s.%s>配置失败: %v", DefaultComponentType, name, err)
 	}
 
-	producer, err := NewProducer(conf)
+	producer, err := NewProducer(name, conf)
 	if err != nil {
 		return nil, err
 	}
@@ -76,6 +78,7 @@ var _ IPulsarProducer = (*PulsarProducer)(nil)
 var _ conn.IInstance = (*PulsarProducer)(nil)
 
 type PulsarProducer struct {
+	name   string
 	client pulsar.Client
 	pulsar.Producer
 }
@@ -86,7 +89,7 @@ func (p *PulsarProducer) Close() {
 }
 
 // 创建生产者
-func NewProducer(conf *Config) (*PulsarProducer, error) {
+func NewProducer(name string, conf *Config) (*PulsarProducer, error) {
 	if err := conf.Check(); err != nil {
 		return nil, err
 	}
@@ -163,7 +166,88 @@ func NewProducer(conf *Config) (*PulsarProducer, error) {
 	}
 
 	return &PulsarProducer{
+		name:     name,
 		client:   client,
 		Producer: producer,
 	}, nil
+}
+
+type sendReq struct {
+	Payload             string
+	Key                 string            `json:"Key,omitempty"`
+	OrderingKey         string            `json:"OrderingKey,omitempty"`
+	Properties          map[string]string `json:"Properties,omitempty"`
+	EventTime           time.Time         `json:"EventTime,omitempty"`
+	ReplicationClusters []string          `json:"ReplicationClusters,omitempty"`
+	DisableReplication  bool              `json:"DisableReplication,omitempty"`
+	SequenceID          *int64            `json:"SequenceID,omitempty"`
+	DeliverAfter        time.Duration     `json:"DeliverAfter,omitempty"`
+	DeliverAt           time.Time         `json:"DeliverAt,omitempty"`
+	msg                 *ProducerMessage
+}
+type sendRsp struct {
+	MID string
+	mid MessageID
+}
+
+func (p *PulsarProducer) Send(ctx context.Context, msg *ProducerMessage) (MessageID, error) {
+	ctx, chain := filter.GetClientFilter(ctx, string(DefaultComponentType), p.name, "Send")
+	r := &sendReq{
+		Payload:             string(msg.Payload),
+		Key:                 msg.Key,
+		OrderingKey:         msg.OrderingKey,
+		Properties:          msg.Properties,
+		EventTime:           msg.EventTime,
+		ReplicationClusters: msg.ReplicationClusters,
+		DisableReplication:  msg.DisableReplication,
+		SequenceID:          msg.SequenceID,
+		DeliverAfter:        msg.DeliverAfter,
+		DeliverAt:           msg.DeliverAt,
+		msg:                 msg,
+	}
+	rsp, err := chain.Handle(ctx, r, func(ctx context.Context, req interface{}) (rsp interface{}, err error) {
+		r := req.(*sendReq)
+		mid, err := p.Producer.Send(ctx, r.msg)
+		sp := &sendRsp{
+			MID: mid.String(),
+			mid: mid,
+		}
+		return sp, err
+	})
+	if err != nil {
+		return nil, err
+	}
+	sp := rsp.(*sendRsp)
+	return sp.mid, nil
+}
+
+func (p *PulsarProducer) SendAsync(ctx context.Context, msg *ProducerMessage, fn func(MessageID, *ProducerMessage, error)) {
+	ctx, chain := filter.GetClientFilter(ctx, string(DefaultComponentType), p.name, "SendAsync")
+	r := &sendReq{
+		Payload:             string(msg.Payload),
+		Key:                 msg.Key,
+		OrderingKey:         msg.OrderingKey,
+		Properties:          msg.Properties,
+		EventTime:           msg.EventTime,
+		ReplicationClusters: msg.ReplicationClusters,
+		DisableReplication:  msg.DisableReplication,
+		SequenceID:          msg.SequenceID,
+		DeliverAfter:        msg.DeliverAfter,
+		DeliverAt:           msg.DeliverAt,
+		msg:                 msg,
+	}
+	_, _ = chain.Handle(ctx, r, func(ctx context.Context, req interface{}) (rsp interface{}, err error) {
+		r := req.(*sendReq)
+		asyncCtx, span := utils.Otel.StartSpan(ctx, "SendAsync")
+		p.Producer.SendAsync(ctx, r.msg, func(id pulsar.MessageID, message *pulsar.ProducerMessage, err error) {
+			fn(id, message, err)
+			if err == nil {
+				utils.Otel.CtxEvent(asyncCtx, "Recv", utils.OtelSpanKey("rsp").String("mid="+id.String()))
+			} else {
+				utils.Otel.CtxErrEvent(asyncCtx, "Recv", err, utils.OtelSpanKey("rsp").String("mid="+id.String()))
+			}
+			span.End()
+		})
+		return nil, err
+	})
 }
