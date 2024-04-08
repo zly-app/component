@@ -20,7 +20,6 @@ import (
 type Sqlx struct {
 	app           core.IApp
 	conn          *conn.Conn
-	componentType core.ComponentType
 }
 
 type ISqlx interface {
@@ -39,14 +38,10 @@ func (i *instance) Close() {
 	_ = i.client.GetDB().Close()
 }
 
-func NewSqlx(app core.IApp, componentType ...core.ComponentType) ISqlx {
+func NewSqlx(app core.IApp) ISqlx {
 	s := &Sqlx{
 		app:           app,
 		conn:          conn.NewConn(),
-		componentType: DefaultComponentType,
-	}
-	if len(componentType) > 0 {
-		s.componentType = componentType[0]
 	}
 	return s
 }
@@ -61,7 +56,7 @@ func (s *Sqlx) GetDefSqlx() Client {
 
 func (s *Sqlx) makeClient(name string) (conn.IInstance, error) {
 	conf := newConfig()
-	err := s.app.GetConfig().ParseComponentConfig(s.componentType, name, conf)
+	err := s.app.GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
 	if err == nil {
 		err = conf.Check()
 	}
@@ -77,9 +72,8 @@ func (s *Sqlx) makeClient(name string) (conn.IInstance, error) {
 	db.SetMaxOpenConns(conf.MaxOpenConns)
 	db.SetConnMaxLifetime(time.Duration(conf.ConnMaxLifetime) * time.Millisecond)
 	client := dbClient{
-		db:         db,
-		clientType: string(s.componentType),
-		clientName: name,
+		db:   db,
+		name: name,
 	}
 	return &instance{client}, nil
 }
