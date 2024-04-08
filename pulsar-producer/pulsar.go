@@ -207,6 +207,12 @@ func (p *PulsarProducer) Send(ctx context.Context, msg *ProducerMessage) (Messag
 	}
 	rsp, err := chain.Handle(ctx, r, func(ctx context.Context, req interface{}) (rsp interface{}, err error) {
 		r := req.(*sendReq)
+
+		if r.msg.Properties == nil {
+			r.msg.Properties = make(map[string]string, 1)
+		}
+		utils.Otel.SaveToMap(ctx, r.msg.Properties)
+
 		mid, err := p.Producer.Send(ctx, r.msg)
 		sp := &sendRsp{
 			MID: mid.String(),
@@ -239,6 +245,12 @@ func (p *PulsarProducer) SendAsync(ctx context.Context, msg *ProducerMessage, fn
 	}
 	_, _ = chain.Handle(ctx, r, func(ctx context.Context, req interface{}) (rsp interface{}, err error) {
 		r := req.(*sendReq)
+
+		if r.msg.Properties == nil {
+			r.msg.Properties = make(map[string]string, 1)
+		}
+		utils.Otel.SaveToMap(ctx, r.msg.Properties)
+
 		asyncCtx, span := utils.Otel.StartSpan(ctx, "SendAsync")
 		p.Producer.SendAsync(ctx, r.msg, func(id pulsar.MessageID, message *pulsar.ProducerMessage, err error) {
 			fn(id, message, err)
