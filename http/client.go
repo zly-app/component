@@ -218,10 +218,13 @@ func (Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 		sp.Uncompressed = httpRsp.Uncompressed
 
 		body, err := io.ReadAll(httpRsp.Body)
-		defer httpRsp.Body.Close()
+		_ = httpRsp.Body.Close()
 		if err != nil {
 			return nil, err
 		}
+
+		httpRsp.Body = io.NopCloser(bytes.NewReader(body))
+
 		sp.Body = string(body)
 		sp.rsp = httpRsp
 		return sp, nil

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	elastic7 "github.com/olivere/elastic/v7"
+	"github.com/zly-app/component/http"
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/consts"
 	"github.com/zly-app/zapp/core"
@@ -79,6 +80,7 @@ func (e *ES7) makeClient(name string) (conn.IInstance, error) {
 		elastic7.SetSniff(conf.Sniff),
 		elastic7.SetHealthcheck(conf.HealthCheck),
 		elastic7.SetGzip(conf.GZip),
+		elastic7.SetHttpClient(http.StdClient),
 	}
 	if conf.UserName != "" || conf.Password != "" {
 		opts = append(opts, elastic7.SetBasicAuth(conf.UserName, conf.Password))

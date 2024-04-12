@@ -18,15 +18,17 @@ c.GetES7(name ...string)            获取es7客户端
 
 > 默认组件类型为 `es7`
 
-```toml
-[components.es7.default]
-Address="http://localhost:9200"     # 地址: http://localhost1:9200,http://localhost2:9200
-UserName=""                         # 用户名
-Password=""                         # 密码
-DialTimeout=5000                    # 连接超时(毫秒
-Sniff=false                         # 开启嗅探器
-Healthcheck=true                    # 心跳检查(默认true
-Retry=0                             # 重试次数
-RetryInterval=0                     # 重试间隔(毫秒)
-GZip=false                          # 启用gzip压缩
+```yaml
+components:
+  es7:
+    default:
+      Address: "http://localhost:9200"     # 地址: http://localhost1:9200,http://localhost2:9200
+      UserName: ""                         # 用户名
+      Password: ""                         # 密码
+      DialTimeout: 5000                    # 连接超时(毫秒
+      Sniff: false                         # 开启嗅探器
+      Healthcheck: true                    # 心跳检查(默认true
+      Retry: 0                             # 重试次数
+      RetryInterval: 0                     # 重试间隔(毫秒)
+      GZip: false                          # 启用gzip压缩
 ```
