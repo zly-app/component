@@ -50,7 +50,7 @@ type Response struct {
 }
 
 var NewClient = func(name string) Client {
-	c := &cli{
+	c := cli{
 		Name: name,
 	}
 	return c
@@ -58,46 +58,46 @@ var NewClient = func(name string) Client {
 
 var defaultClient = &http.Client{}
 
-func (c *cli) Get(ctx context.Context, path string, opts ...Option) (*Response, error) {
+func (c cli) Get(ctx context.Context, path string, opts ...Option) (*Response, error) {
 	req := NewRequest(http.MethodGet, path, "")
 	req.applyOptions(opts...)
 	return c.do(ctx, req)
 }
 
-func (c *cli) Head(ctx context.Context, path string, opts ...Option) (*Response, error) {
+func (c cli) Head(ctx context.Context, path string, opts ...Option) (*Response, error) {
 	req := NewRequest(http.MethodHead, path, "")
 	req.applyOptions(opts...)
 	return c.do(ctx, req)
 }
 
-func (c *cli) Post(ctx context.Context, path string, reqBody []byte, opts ...Option) (*Response, error) {
+func (c cli) Post(ctx context.Context, path string, reqBody []byte, opts ...Option) (*Response, error) {
 	req := NewRequest(http.MethodPost, path, string(reqBody))
 	req.applyOptions(opts...)
 	return c.do(ctx, req)
 }
 
-func (c *cli) Put(ctx context.Context, path string, reqBody []byte, opts ...Option) (*Response, error) {
+func (c cli) Put(ctx context.Context, path string, reqBody []byte, opts ...Option) (*Response, error) {
 	req := NewRequest(http.MethodPut, path, string(reqBody))
 	req.applyOptions(opts...)
 	return c.do(ctx, req)
 }
 
-func (c *cli) Patch(ctx context.Context, path string, reqBody []byte, opts ...Option) (*Response, error) {
+func (c cli) Patch(ctx context.Context, path string, reqBody []byte, opts ...Option) (*Response, error) {
 	req := NewRequest(http.MethodPatch, path, string(reqBody))
 	req.applyOptions(opts...)
 	return c.do(ctx, req)
 }
 
-func (c *cli) Delete(ctx context.Context, path string, reqBody []byte, opts ...Option) (*Response, error) {
+func (c cli) Delete(ctx context.Context, path string, reqBody []byte, opts ...Option) (*Response, error) {
 	req := NewRequest(http.MethodDelete, path, string(reqBody))
 	req.applyOptions(opts...)
 	return c.do(ctx, req)
 }
-func (c *cli) Do(ctx context.Context, req *Request) (*Response, error) {
+func (c cli) Do(ctx context.Context, req *Request) (*Response, error) {
 	return c.do(ctx, req)
 }
 
-func (c *cli) do(ctx context.Context, req *Request) (*Response, error) {
+func (c cli) do(ctx context.Context, req *Request) (*Response, error) {
 	ctx, chain := filter.GetClientFilter(ctx, DefaultComponentType, c.Name, req.Method)
 	meta := filter.GetCallMeta(ctx)
 	meta.AddCallersSkip(1)
@@ -160,7 +160,7 @@ func (c *cli) do(ctx context.Context, req *Request) (*Response, error) {
 }
 
 var StdClient = newStdClient()
-var StdTransport = newTransport()
+var StdTransport = newStdTransport()
 
 var defaultDialer = &net.Dialer{
 	Timeout:   30 * time.Second,
@@ -176,7 +176,13 @@ var defaultTransport http.RoundTripper = &http.Transport{
 	ExpectContinueTimeout: 1 * time.Second,
 }
 
-type Transport struct{}
+var NewTransport = func(name string) http.RoundTripper {
+	return Transport{Name: name}
+}
+
+type Transport struct {
+	Name string
+}
 type roundTripReq struct {
 	Method string
 	Path   string
@@ -198,8 +204,8 @@ type roundTripResponse struct {
 	rsp           *http.Response
 }
 
-func (Transport) RoundTrip(req *http.Request) (*http.Response, error) {
-	ctx, chain := filter.GetClientFilter(req.Context(), DefaultComponentType, "std", req.Method)
+func (t Transport) RoundTrip(req *http.Request) (*http.Response, error) {
+	ctx, chain := filter.GetClientFilter(req.Context(), DefaultComponentType, t.Name, req.Method)
 	meta := filter.GetCallMeta(ctx)
 	meta.AddCallersSkip(1)
 
@@ -256,11 +262,11 @@ func (Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 func newStdClient() *http.Client {
 	return &http.Client{Transport: StdTransport}
 }
-func newTransport() http.RoundTripper {
-	return Transport{}
+func newStdTransport() http.RoundTripper {
+	return Transport{Name: "std"}
 }
 
-// 替换http包的client和transport
+// 替换http包的client和transport. 如果使用 zapp 包, 应该在 NewApp 之后调用这个函数
 func ReplaceStd() {
 	http.DefaultClient = StdClient
 	http.DefaultTransport = StdTransport
