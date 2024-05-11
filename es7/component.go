@@ -11,6 +11,7 @@ package es7
 import (
 	"context"
 	"fmt"
+	stdhttp "net/http"
 	"strings"
 	"time"
 
@@ -80,7 +81,7 @@ func (e *ES7) makeClient(name string) (conn.IInstance, error) {
 		elastic7.SetSniff(conf.Sniff),
 		elastic7.SetHealthcheck(conf.HealthCheck),
 		elastic7.SetGzip(conf.GZip),
-		elastic7.SetHttpClient(http.StdClient),
+		elastic7.SetHttpClient(&stdhttp.Client{Transport: http.NewTransport(name)}),
 	}
 	if conf.UserName != "" || conf.Password != "" {
 		opts = append(opts, elastic7.SetBasicAuth(conf.UserName, conf.Password))
