@@ -28,3 +28,11 @@ func main() {
 	logger.Log.Info(rsp.Body)
 }
 ```
+
+# 替换 http 包的的 DefaultClient 和 DefaultTransport 以默认支持相关监测
+
+```go
+func main() {
+	http.ReplaceStd()
+}
+```

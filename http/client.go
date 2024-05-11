@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"net"
 	"net/http"
 	"time"
 
@@ -54,6 +55,8 @@ var NewClient = func(name string) Client {
 	}
 	return c
 }
+
+var defaultClient = &http.Client{}
 
 func (c *cli) Get(ctx context.Context, path string, opts ...Option) (*Response, error) {
 	req := NewRequest(http.MethodGet, path, "")
@@ -126,7 +129,7 @@ func (c *cli) do(ctx context.Context, req *Request) (*Response, error) {
 			httpReq.URL.RawQuery = query.Encode()
 		}
 
-		httpRsp, err := http.DefaultClient.Do(httpReq)
+		httpRsp, err := defaultClient.Do(httpReq)
 		if err != nil {
 			return nil, err
 		}
@@ -157,6 +160,21 @@ func (c *cli) do(ctx context.Context, req *Request) (*Response, error) {
 }
 
 var StdClient = newStdClient()
+var StdTransport = newTransport()
+
+var defaultDialer = &net.Dialer{
+	Timeout:   30 * time.Second,
+	KeepAlive: 30 * time.Second,
+}
+var defaultTransport http.RoundTripper = &http.Transport{
+	Proxy:                 http.ProxyFromEnvironment,
+	DialContext:           defaultDialer.DialContext,
+	ForceAttemptHTTP2:     true,
+	MaxIdleConns:          100,
+	IdleConnTimeout:       90 * time.Second,
+	TLSHandshakeTimeout:   10 * time.Second,
+	ExpectContinueTimeout: 1 * time.Second,
+}
 
 type Transport struct{}
 type roundTripReq struct {
@@ -205,7 +223,7 @@ func (Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	rsp, err := chain.Handle(ctx, r, func(ctx context.Context, req interface{}) (rsp interface{}, err error) {
 		r := req.(*roundTripReq)
-		httpRsp, err := http.DefaultTransport.RoundTrip(r.req)
+		httpRsp, err := defaultTransport.RoundTrip(r.req)
 		if err != nil {
 			return nil, err
 		}
@@ -236,5 +254,14 @@ func (Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func newStdClient() *http.Client {
-	return &http.Client{Transport: Transport{}}
+	return &http.Client{Transport: StdTransport}
+}
+func newTransport() http.RoundTripper {
+	return Transport{}
+}
+
+// 替换http包的client和transport
+func ReplaceStd() {
+	http.DefaultClient = StdClient
+	http.DefaultTransport = StdTransport
 }
