@@ -18,8 +18,8 @@ import (
 )
 
 type Sqlx struct {
-	app           core.IApp
-	conn          *conn.Conn
+	app  core.IApp
+	conn *conn.Conn
 }
 
 type ISqlx interface {
@@ -40,18 +40,22 @@ func (i *instance) Close() {
 
 func NewSqlx(app core.IApp) ISqlx {
 	s := &Sqlx{
-		app:           app,
-		conn:          conn.NewConn(),
+		app:  app,
+		conn: conn.NewConn(),
 	}
 	return s
 }
 
 func (s *Sqlx) GetSqlx(name ...string) Client {
-	return s.conn.GetInstance(s.makeClient, name...).(*instance).client
+	ins, err := s.conn.GetConn(s.makeClient, name...)
+	if err != nil {
+		return newErrClient(err)
+	}
+	return ins.(*instance).client
 }
 
 func (s *Sqlx) GetDefSqlx() Client {
-	return s.conn.GetInstance(s.makeClient, consts.DefaultComponentName).(*instance).client
+	return s.GetSqlx(consts.DefaultComponentName)
 }
 
 func (s *Sqlx) makeClient(name string) (conn.IInstance, error) {
