@@ -42,11 +42,15 @@ type ProducerCreator struct {
 }
 
 func (p *ProducerCreator) GetPulsarProducer(name ...string) IPulsarProducer {
-	return p.conn.GetInstance(p.makeProducer, name...).(IPulsarProducer)
+	ins, err := p.conn.GetConn(p.makeProducer, name...)
+	if err != nil {
+		return newErrProducer(err)
+	}
+	return ins.(IPulsarProducer)
 }
 
 func (p *ProducerCreator) GetDefPulsarProducer() IPulsarProducer {
-	return p.conn.GetInstance(p.makeProducer, consts.DefaultComponentName).(IPulsarProducer)
+	return p.GetPulsarProducer(consts.DefaultComponentName)
 }
 
 func (p *ProducerCreator) Close() { p.conn.CloseAll() }
