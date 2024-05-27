@@ -1,4 +1,8 @@
 
+# 注意, 此库已弃用, 请转到 https://github.com/zly-app/zapp/tree/master/component/metrics
+
+---
+
 # prometheus 指标收集器组件
 
 > 提供用于 https://github.com/zly-app/zapp 的组件
