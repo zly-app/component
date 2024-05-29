@@ -56,7 +56,9 @@ var NewClient = func(name string) Client {
 	return c
 }
 
-var defaultClient = &http.Client{}
+var rawStdClient = &http.Client{
+	Transport: rawStdTransport,
+}
 
 func (c cli) Get(ctx context.Context, path string, opts ...Option) (*Response, error) {
 	req := NewRequest(http.MethodGet, path, "")
@@ -97,61 +99,24 @@ func (c cli) Do(ctx context.Context, req *Request) (*Response, error) {
 	return c.do(ctx, req)
 }
 
-func (c cli) do(ctx context.Context, req *Request) (*Response, error) {
-	ctx, chain := filter.GetClientFilter(ctx, DefaultComponentType, c.Name, req.Method)
+func (c cli) do(ctx context.Context, r *Request) (*Response, error) {
+	if isWithoutZAppFilter(ctx) {
+		return c._do(ctx, r)
+	}
+
+	ctx, chain := filter.GetClientFilter(ctx, DefaultComponentType, c.Name, r.Method)
 	meta := filter.GetCallMeta(ctx)
 	meta.AddCallersSkip(1)
 
-	if req.Timeout > 0 {
+	if r.Timeout > 0 {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, req.Timeout)
+		ctx, cancel = context.WithTimeout(ctx, r.Timeout)
 		defer cancel()
 	}
 
-	rsp, err := chain.Handle(ctx, req, func(ctx context.Context, req interface{}) (rsp interface{}, err error) {
+	rsp, err := chain.Handle(ctx, r, func(ctx context.Context, req interface{}) (rsp interface{}, err error) {
 		r := req.(*Request)
-		var reqBody io.Reader
-		if r.Body != "" {
-			reqBody = bytes.NewBufferString(r.Body)
-		}
-		httpReq, err := http.NewRequestWithContext(ctx, r.Method, r.Path, reqBody)
-		if err != nil {
-			return nil, err
-		}
-		if r.Header != nil {
-			httpReq.Header = r.Header
-		}
-		if len(r.Params) > 0 {
-			query := httpReq.URL.Query()
-			for k, v := range r.Params {
-				query[k] = append(query[k], v...)
-			}
-			httpReq.URL.RawQuery = query.Encode()
-		}
-
-		httpRsp, err := defaultClient.Do(httpReq)
-		if err != nil {
-			return nil, err
-		}
-
-		sp := &Response{}
-		sp.Status = httpRsp.Status
-		sp.StatusCode = httpRsp.StatusCode
-		sp.ContentLength = httpRsp.ContentLength
-		sp.Header = httpRsp.Header
-		sp.Uncompressed = httpRsp.Uncompressed
-		if !r.RspBodyIsStream {
-			body, err := io.ReadAll(httpRsp.Body)
-			defer httpRsp.Body.Close()
-			if err != nil {
-				return nil, err
-			}
-			sp.Body = string(body)
-		} else {
-			sp.BodyStream = httpRsp.Body
-		}
-
-		return sp, nil
+		return c._do(ctx, r)
 	})
 	if err != nil {
 		return nil, err
@@ -159,16 +124,61 @@ func (c cli) do(ctx context.Context, req *Request) (*Response, error) {
 	return rsp.(*Response), nil
 }
 
+func (c cli) _do(ctx context.Context, r *Request) (*Response, error) {
+	var reqBody io.Reader
+	if r.Body != "" {
+		reqBody = bytes.NewBufferString(r.Body)
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, r.Method, r.Path, reqBody)
+	if err != nil {
+		return nil, err
+	}
+	if r.Header != nil {
+		httpReq.Header = r.Header
+	}
+	if len(r.Params) > 0 {
+		query := httpReq.URL.Query()
+		for k, v := range r.Params {
+			query[k] = append(query[k], v...)
+		}
+		httpReq.URL.RawQuery = query.Encode()
+	}
+
+	httpRsp, err := rawStdClient.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+
+	sp := &Response{}
+	sp.Status = httpRsp.Status
+	sp.StatusCode = httpRsp.StatusCode
+	sp.ContentLength = httpRsp.ContentLength
+	sp.Header = httpRsp.Header
+	sp.Uncompressed = httpRsp.Uncompressed
+	if !r.RspBodyIsStream {
+		body, err := io.ReadAll(httpRsp.Body)
+		defer httpRsp.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+		sp.Body = string(body)
+	} else {
+		sp.BodyStream = httpRsp.Body
+	}
+
+	return sp, nil
+}
+
 var StdClient = newStdClient()
 var StdTransport = newStdTransport()
 
-var defaultDialer = &net.Dialer{
+var rawStdDialer = &net.Dialer{
 	Timeout:   30 * time.Second,
 	KeepAlive: 30 * time.Second,
 }
-var defaultTransport http.RoundTripper = &http.Transport{
+var rawStdTransport http.RoundTripper = &http.Transport{
 	Proxy:                 http.ProxyFromEnvironment,
-	DialContext:           defaultDialer.DialContext,
+	DialContext:           rawStdDialer.DialContext,
 	ForceAttemptHTTP2:     true,
 	MaxIdleConns:          100,
 	IdleConnTimeout:       90 * time.Second,
@@ -205,6 +215,10 @@ type roundTripResponse struct {
 }
 
 func (t Transport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if isWithoutZAppFilter(req.Context()) {
+		return rawStdTransport.RoundTrip(req)
+	}
+
 	ctx, chain := filter.GetClientFilter(req.Context(), DefaultComponentType, t.Name, req.Method)
 	meta := filter.GetCallMeta(ctx)
 	meta.AddCallersSkip(1)
@@ -229,7 +243,7 @@ func (t Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	rsp, err := chain.Handle(ctx, r, func(ctx context.Context, req interface{}) (rsp interface{}, err error) {
 		r := req.(*roundTripReq)
-		httpRsp, err := defaultTransport.RoundTrip(r.req)
+		httpRsp, err := rawStdTransport.RoundTrip(r.req)
 		if err != nil {
 			return nil, err
 		}
@@ -266,8 +280,20 @@ func newStdTransport() http.RoundTripper {
 	return Transport{Name: "std"}
 }
 
-// 替换http包的client和transport. 如果使用 zapp 包, 应该在 NewApp 之后调用这个函数
+// 替换http包的client和transport. 调用此函数前必须已执行了 zapp.NewApp
 func ReplaceStd() {
 	http.DefaultClient = StdClient
 	http.DefaultTransport = StdTransport
+}
+
+type withoutFilterKey struct{}
+
+// 本次调用不使用zapp的filter功能
+func WithoutZAppFilter(ctx context.Context) context.Context {
+	ctx = context.WithValue(ctx, withoutFilterKey{}, struct{}{})
+	return ctx
+}
+
+func isWithoutZAppFilter(ctx context.Context) bool {
+	return ctx.Value(withoutFilterKey{}) != nil
 }
