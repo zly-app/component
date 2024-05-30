@@ -49,3 +49,38 @@ func WithTimeout(d time.Duration) Option {
 		r.Timeout = d
 	}
 }
+
+// 设置请求的json数据
+func WithInJson(inPtr interface{}) Option {
+	return func(r *Request) {
+		r.inJsonPtr = inPtr
+	}
+}
+
+// 设置请求的yaml数据
+func WithInYaml(inPtr interface{}) Option {
+	return func(r *Request) {
+		r.inYamlPtr = inPtr
+	}
+}
+
+// 数据解析为json
+func WithOutJson(outPtr interface{}) Option {
+	return func(r *Request) {
+		r.outJsonPtr = outPtr
+	}
+}
+
+// 数据解析为yaml
+func WithOutYaml(outPtr interface{}) Option {
+	return func(r *Request) {
+		r.outYamlPtr = outPtr
+	}
+}
+
+// 跳过x509校验
+func WithInsecureSkipVerify() Option {
+	return func(r *Request) {
+		r.InsecureSkipVerify = true
+	}
+}

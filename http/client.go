@@ -3,12 +3,17 @@ package http
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"errors"
 	"io"
 	"net"
 	"net/http"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/zly-app/zapp/filter"
+	"gopkg.in/yaml.v3"
 )
 
 const DefaultComponentType = "http"
@@ -36,6 +41,13 @@ type Request struct {
 	Params          Values        // 请求参数
 	RspBodyIsStream bool          // 标记响应body是流数据
 	Timeout         time.Duration // 超时
+
+	InsecureSkipVerify bool // 跳过x509校验
+
+	inJsonPtr  interface{} // 输入json
+	inYamlPtr  interface{} // 输入yaml
+	outJsonPtr interface{} // 输出json
+	outYamlPtr interface{} // 输出yaml
 }
 
 type Response struct {
@@ -58,6 +70,9 @@ var NewClient = func(name string) Client {
 
 var rawStdClient = &http.Client{
 	Transport: rawStdTransport,
+}
+var rawStdClientInsecureSkipVerify = &http.Client{
+	Transport: rawStdTransportInsecureSkipVerify,
 }
 
 func (c cli) Get(ctx context.Context, path string, opts ...Option) (*Response, error) {
@@ -100,8 +115,41 @@ func (c cli) Do(ctx context.Context, req *Request) (*Response, error) {
 }
 
 func (c cli) do(ctx context.Context, r *Request) (*Response, error) {
+	if r.Body != "" && (r.inJsonPtr != nil || r.inYamlPtr != nil) {
+		return nil, errors.New("Body, inJsonPtr and inYamlPtr are mutually exclusive")
+	}
+	if r.inJsonPtr != nil && r.inYamlPtr != nil {
+		return nil, errors.New("Body, inJsonPtr and inYamlPtr are mutually exclusive")
+	}
+
+	if r.RspBodyIsStream && (r.outJsonPtr != nil || r.outYamlPtr != nil) {
+		return nil, errors.New("RspBodyIsStream, outJsonPtr and outYamlPtr are mutually exclusive")
+	}
+	if r.outJsonPtr != nil && r.outYamlPtr != nil {
+		return nil, errors.New("RspBodyIsStream, outJsonPtr and outYamlPtr are mutually exclusive")
+	}
+
+	if r.inJsonPtr != nil {
+		body, err := sonic.ConfigStd.MarshalToString(r.inJsonPtr)
+		if err != nil {
+			return nil, err
+		}
+		r.Body = body
+	}
+	if r.inYamlPtr != nil {
+		bs, err := yaml.Marshal(r.inJsonPtr)
+		if err != nil {
+			return nil, err
+		}
+		r.Body = string(bs)
+	}
+
 	if isWithoutZAppFilter(ctx) {
-		return c._do(ctx, r)
+		sp, err := c._do(ctx, r)
+		if err == nil {
+			err = c.unmarshal(ctx, r, sp)
+		}
+		return sp, err
 	}
 
 	ctx, chain := filter.GetClientFilter(ctx, DefaultComponentType, c.Name, r.Method)
@@ -118,10 +166,12 @@ func (c cli) do(ctx context.Context, r *Request) (*Response, error) {
 		r := req.(*Request)
 		return c._do(ctx, r)
 	})
-	if err != nil {
-		return nil, err
+	if err == nil {
+		sp := rsp.(*Response)
+		err = c.unmarshal(ctx, r, sp)
+		return sp, err
 	}
-	return rsp.(*Response), nil
+	return nil, err
 }
 
 func (c cli) _do(ctx context.Context, r *Request) (*Response, error) {
@@ -144,7 +194,12 @@ func (c cli) _do(ctx context.Context, r *Request) (*Response, error) {
 		httpReq.URL.RawQuery = query.Encode()
 	}
 
-	httpRsp, err := rawStdClient.Do(httpReq)
+	var httpRsp *http.Response
+	if r.InsecureSkipVerify {
+		httpRsp, err = rawStdClientInsecureSkipVerify.Do(httpReq)
+	} else {
+		httpRsp, err = rawStdClient.Do(httpReq)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -169,6 +224,16 @@ func (c cli) _do(ctx context.Context, r *Request) (*Response, error) {
 	return sp, nil
 }
 
+func (c cli) unmarshal(ctx context.Context, r *Request, sp *Response) error {
+	if r.outJsonPtr != nil {
+		return sonic.UnmarshalString(sp.Body, r.outJsonPtr)
+	}
+	if r.outYamlPtr != nil {
+		return yaml.Unmarshal([]byte(sp.Body), r.outYamlPtr)
+	}
+	return nil
+}
+
 var StdClient = newStdClient()
 var StdTransport = newStdTransport()
 
@@ -184,6 +249,19 @@ var rawStdTransport http.RoundTripper = &http.Transport{
 	IdleConnTimeout:       90 * time.Second,
 	TLSHandshakeTimeout:   10 * time.Second,
 	ExpectContinueTimeout: 1 * time.Second,
+}
+var rawStdTransportInsecureSkipVerify http.RoundTripper = &http.Transport{
+	Proxy:                 http.ProxyFromEnvironment,
+	DialContext:           rawStdDialer.DialContext,
+	ForceAttemptHTTP2:     true,
+	MaxIdleConns:          100,
+	IdleConnTimeout:       90 * time.Second,
+	TLSHandshakeTimeout:   10 * time.Second,
+	ExpectContinueTimeout: 1 * time.Second,
+	TLSClientConfig: &tls.Config{
+		InsecureSkipVerify: true, // 跳过tls校验
+		RootCAs:            x509.NewCertPool(),
+	},
 }
 
 var NewTransport = func(name string) http.RoundTripper {
