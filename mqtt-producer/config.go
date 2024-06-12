@@ -23,7 +23,7 @@ func NewConfig() *Config {
 	return &Config{}
 }
 
-func (conf Config) Check(app core.IApp) error {
+func (conf *Config) Check(app core.IApp) error {
 	if conf.Server == "" {
 		conf.Server = defServer
 	}
