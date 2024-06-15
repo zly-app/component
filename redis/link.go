@@ -23,3 +23,9 @@ type (
 	Hook            = redis.Hook
 	Limiter         = redis.Limiter
 )
+
+type (
+	Z        = redis.Z
+	ZWithKey = redis.ZWithKey
+	ZStore   = redis.ZStore
+)
