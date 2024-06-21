@@ -95,7 +95,7 @@ func (th *tracingHook) ProcessHook(hook redis.ProcessHook) redis.ProcessHook {
 	return func(ctx context.Context, cmd redis.Cmder) error {
 		ctx, chain := filter.GetClientFilter(ctx, th.clientType, th.clientName, cmd.FullName())
 		meta := filter.GetCallMeta(ctx)
-		meta.AddCallersSkip(3)
+		meta.AddCallersSkip(4)
 		req := &cmdReq{
 			cmd:       cmd,
 			CmdString: rediscmd.CmdString(cmd),
