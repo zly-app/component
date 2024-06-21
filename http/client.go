@@ -36,33 +36,33 @@ type Request struct {
 	Method string
 	Path   string
 
-	Timeout time.Duration // 超时
+	Timeout time.Duration `json:"Timeout,omitempty"` // 超时
 
-	InsecureSkipVerify bool // 跳过x509校验
+	InsecureSkipVerify bool `json:"InsecureSkipVerify,omitempty"` // 跳过x509校验
 
-	InHeader Header // 请求head
-	InParams Values // 请求参数
+	InHeader Header `json:"InHeader,omitempty"` // 请求head
+	InParams Values `json:"InParams,omitempty"` // 请求参数
 
 	Body       string
 	inJsonPtr  interface{} // 输入json
 	inYamlPtr  interface{} // 输入yaml
 	inStream   io.Reader
-	InIsStream bool // 标记输入body是流数据, 使用者不应该主动设置这个值, 它是http库自动设置的
+	InIsStream bool `json:"InIsStream,omitempty"` // 标记输入body是流数据, 使用者不应该主动设置这个值, 它是http库自动设置的
 
 	outJsonPtr  interface{} // 输出json
 	outYamlPtr  interface{} // 输出yaml
-	OutIsStream bool        // 标记响应body是流数据
+	OutIsStream bool        `json:"OutIsStream,omitempty"` // 标记响应body是流数据
 }
 
 type Response struct {
 	Body       string
-	BodyStream io.ReadCloser // 注意, 读取完毕需要使用者自行调用 Close
+	BodyStream io.ReadCloser `json:"-"` // 注意, 读取完毕需要使用者自行调用 Close
 
 	Status        string
 	StatusCode    int
 	ContentLength int64
 	Header        Header
-	Uncompressed  bool
+	Uncompressed  bool `json:"Uncompressed,omitempty"`
 }
 
 var NewClient = func(name string) Client {
