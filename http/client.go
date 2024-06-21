@@ -129,11 +129,8 @@ func (c cli) do(ctx context.Context, r *Request) (*Response, error) {
 		return nil, errors.New("Body, inJsonPtr, inYamlPtr and inStream are mutually exclusive")
 	}
 
-	if r.OutIsStream && (r.outJsonPtr != nil || r.outYamlPtr != nil) {
-		return nil, errors.New("OutIsStream, outJsonPtr and outYamlPtr are mutually exclusive")
-	}
 	if r.outJsonPtr != nil && r.outYamlPtr != nil {
-		return nil, errors.New("OutIsStream, outJsonPtr and outYamlPtr are mutually exclusive")
+		return nil, errors.New("outJsonPtr and outYamlPtr are mutually exclusive")
 	}
 
 	r.InIsStream = r.inStream != nil
