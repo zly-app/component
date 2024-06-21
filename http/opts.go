@@ -1,6 +1,7 @@
 package http
 
 import (
+	"io"
 	"net/url"
 	"time"
 )
@@ -22,31 +23,24 @@ func NewRequest(method, path, body string) *Request {
 	return o
 }
 
-// 设置header
-func WithHeader(header Header) Option {
-	return func(r *Request) {
-		r.Header = header
-	}
-}
-
-// 设置uri参数
-func WithParams(params url.Values) Option {
-	return func(r *Request) {
-		r.Params = params
-	}
-}
-
-// 标记响应body是流数据
-func WithRspBodyIsStream(isStream bool) Option {
-	return func(r *Request) {
-		r.RspBodyIsStream = isStream
-	}
-}
-
 // 设置超时
 func WithTimeout(d time.Duration) Option {
 	return func(r *Request) {
 		r.Timeout = d
+	}
+}
+
+// 设置header
+func WithInHeader(header Header) Option {
+	return func(r *Request) {
+		r.InHeader = header
+	}
+}
+
+// 设置uri参数
+func WithInParams(params url.Values) Option {
+	return func(r *Request) {
+		r.InParams = params
 	}
 }
 
@@ -64,17 +58,31 @@ func WithInYaml(inPtr interface{}) Option {
 	}
 }
 
-// 数据解析为json
+// 设置请求body流
+func WithInBodyStream(body io.Reader) Option {
+	return func(r *Request) {
+		r.inStream = body
+	}
+}
+
+// 数据解析为json, 如果标记响应body是流数据, 不需要调用 BodyStream.Close()
 func WithOutJson(outPtr interface{}) Option {
 	return func(r *Request) {
 		r.outJsonPtr = outPtr
 	}
 }
 
-// 数据解析为yaml
+// 数据解析为yaml, 如果标记响应body是流数据, 不需要调用 BodyStream.Close()
 func WithOutYaml(outPtr interface{}) Option {
 	return func(r *Request) {
 		r.outYamlPtr = outPtr
+	}
+}
+
+// 标记响应body是流数据, 读取方式从Body改为BodyStream, 且读取完毕后需要调用 BodyStream.Close()
+func WithOutIsStream(isStream bool) Option {
+	return func(r *Request) {
+		r.OutIsStream = isStream
 	}
 }
 

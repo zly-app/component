@@ -35,19 +35,23 @@ type cli struct {
 type Request struct {
 	Method string
 	Path   string
-	Body   string
 
-	Header          Header        // 请求head
-	Params          Values        // 请求参数
-	RspBodyIsStream bool          // 标记响应body是流数据
-	Timeout         time.Duration // 超时
+	Timeout time.Duration // 超时
 
 	InsecureSkipVerify bool // 跳过x509校验
 
+	InHeader Header // 请求head
+	InParams Values // 请求参数
+
+	Body       string
 	inJsonPtr  interface{} // 输入json
 	inYamlPtr  interface{} // 输入yaml
-	outJsonPtr interface{} // 输出json
-	outYamlPtr interface{} // 输出yaml
+	inStream   io.Reader
+	InIsStream bool // 标记输入body是流数据, 使用者不应该主动设置这个值, 它是http库自动设置的
+
+	outJsonPtr  interface{} // 输出json
+	outYamlPtr  interface{} // 输出yaml
+	OutIsStream bool        // 标记响应body是流数据
 }
 
 type Response struct {
@@ -115,33 +119,42 @@ func (c cli) Do(ctx context.Context, req *Request) (*Response, error) {
 }
 
 func (c cli) do(ctx context.Context, r *Request) (*Response, error) {
-	if r.Body != "" && (r.inJsonPtr != nil || r.inYamlPtr != nil) {
-		return nil, errors.New("Body, inJsonPtr and inYamlPtr are mutually exclusive")
+	if r.Body != "" && (r.inStream != nil || r.inJsonPtr != nil || r.inYamlPtr != nil) {
+		return nil, errors.New("Body, inJsonPtr, inYamlPtr and inStream are mutually exclusive")
+	}
+	if r.inStream != nil && (r.inJsonPtr != nil || r.inYamlPtr != nil) {
+		return nil, errors.New("Body, inJsonPtr, inYamlPtr and inStream are mutually exclusive")
 	}
 	if r.inJsonPtr != nil && r.inYamlPtr != nil {
-		return nil, errors.New("Body, inJsonPtr and inYamlPtr are mutually exclusive")
+		return nil, errors.New("Body, inJsonPtr, inYamlPtr and inStream are mutually exclusive")
 	}
 
-	if r.RspBodyIsStream && (r.outJsonPtr != nil || r.outYamlPtr != nil) {
-		return nil, errors.New("RspBodyIsStream, outJsonPtr and outYamlPtr are mutually exclusive")
+	if r.OutIsStream && (r.outJsonPtr != nil || r.outYamlPtr != nil) {
+		return nil, errors.New("OutIsStream, outJsonPtr and outYamlPtr are mutually exclusive")
 	}
 	if r.outJsonPtr != nil && r.outYamlPtr != nil {
-		return nil, errors.New("RspBodyIsStream, outJsonPtr and outYamlPtr are mutually exclusive")
+		return nil, errors.New("OutIsStream, outJsonPtr and outYamlPtr are mutually exclusive")
 	}
 
+	r.InIsStream = r.inStream != nil
+	if r.Body != "" {
+		r.inStream = bytes.NewBufferString(r.Body)
+	}
 	if r.inJsonPtr != nil {
-		body, err := sonic.ConfigStd.MarshalToString(r.inJsonPtr)
+		body, err := sonic.ConfigStd.Marshal(r.inJsonPtr)
 		if err != nil {
 			return nil, err
 		}
-		r.Body = body
+		r.Body = string(body)
+		r.inStream = bytes.NewReader(body)
 	}
 	if r.inYamlPtr != nil {
-		bs, err := yaml.Marshal(r.inJsonPtr)
+		body, err := yaml.Marshal(r.inJsonPtr)
 		if err != nil {
 			return nil, err
 		}
-		r.Body = string(bs)
+		r.Body = string(body)
+		r.inStream = bytes.NewReader(body)
 	}
 
 	if isWithoutZAppFilter(ctx) {
@@ -156,12 +169,6 @@ func (c cli) do(ctx context.Context, r *Request) (*Response, error) {
 	meta := filter.GetCallMeta(ctx)
 	meta.AddCallersSkip(1)
 
-	if r.Timeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, r.Timeout)
-		defer cancel()
-	}
-
 	rsp, err := chain.Handle(ctx, r, func(ctx context.Context, req interface{}) (rsp interface{}, err error) {
 		r := req.(*Request)
 		return c._do(ctx, r)
@@ -175,20 +182,22 @@ func (c cli) do(ctx context.Context, r *Request) (*Response, error) {
 }
 
 func (c cli) _do(ctx context.Context, r *Request) (*Response, error) {
-	var reqBody io.Reader
-	if r.Body != "" {
-		reqBody = bytes.NewBufferString(r.Body)
+	if r.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, r.Timeout)
+		defer cancel()
 	}
-	httpReq, err := http.NewRequestWithContext(ctx, r.Method, r.Path, reqBody)
+
+	httpReq, err := http.NewRequestWithContext(ctx, r.Method, r.Path, r.inStream)
 	if err != nil {
 		return nil, err
 	}
-	if r.Header != nil {
-		httpReq.Header = r.Header
+	if r.InHeader != nil {
+		httpReq.Header = r.InHeader
 	}
-	if len(r.Params) > 0 {
+	if len(r.InParams) > 0 {
 		query := httpReq.URL.Query()
-		for k, v := range r.Params {
+		for k, v := range r.InParams {
 			query[k] = append(query[k], v...)
 		}
 		httpReq.URL.RawQuery = query.Encode()
@@ -210,7 +219,7 @@ func (c cli) _do(ctx context.Context, r *Request) (*Response, error) {
 	sp.ContentLength = httpRsp.ContentLength
 	sp.Header = httpRsp.Header
 	sp.Uncompressed = httpRsp.Uncompressed
-	if !r.RspBodyIsStream {
+	if !r.OutIsStream {
 		body, err := io.ReadAll(httpRsp.Body)
 		defer httpRsp.Body.Close()
 		if err != nil {
@@ -225,11 +234,25 @@ func (c cli) _do(ctx context.Context, r *Request) (*Response, error) {
 }
 
 func (c cli) unmarshal(ctx context.Context, r *Request, sp *Response) error {
+	if r.OutIsStream {
+		return c.unmarshalStream(ctx, r, sp)
+	}
+
 	if r.outJsonPtr != nil {
 		return sonic.UnmarshalString(sp.Body, r.outJsonPtr)
 	}
 	if r.outYamlPtr != nil {
 		return yaml.Unmarshal([]byte(sp.Body), r.outYamlPtr)
+	}
+	return nil
+}
+
+func (c cli) unmarshalStream(ctx context.Context, r *Request, sp *Response) error {
+	if r.outJsonPtr != nil {
+		return sonic.ConfigDefault.NewDecoder(sp.BodyStream).Decode(r.outJsonPtr)
+	}
+	if r.outYamlPtr != nil {
+		return yaml.NewDecoder(sp.BodyStream).Decode(r.outYamlPtr)
 	}
 	return nil
 }
