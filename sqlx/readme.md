@@ -14,7 +14,9 @@ func main() {
     creator := sqlx.NewSqlx(app) // 创建建造者
     client := creator.GetSqlx("default") // 通过建造者获取客户端
 }
-``` 
+```
+
+示例转到[这里](./example)
 
 # 配置
 
