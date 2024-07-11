@@ -218,8 +218,10 @@ func getCmdVal(cmd redis.Cmder) string {
 		}
 
 		var buff bytes.Buffer
-		for _, v := range vv {
-			buff.WriteByte('\n')
+		for i, v := range vv {
+			if i > 0 {
+				buff.WriteByte('\n')
+			}
 			buff.WriteString(cast.ToString(v))
 		}
 		return buff.String()
@@ -232,8 +234,10 @@ func getCmdVal(cmd redis.Cmder) string {
 		}
 
 		var buff bytes.Buffer
-		for _, v := range vv {
-			buff.WriteByte('\n')
+		for i, v := range vv {
+			if i > 0 {
+				buff.WriteByte('\n')
+			}
 			buff.WriteString(cast.ToString(v))
 		}
 		return buff.String()
@@ -246,8 +250,10 @@ func getCmdVal(cmd redis.Cmder) string {
 		}
 
 		var buff bytes.Buffer
-		for _, v := range vv {
-			buff.WriteByte('\n')
+		for i, v := range vv {
+			if i > 0 {
+				buff.WriteByte('\n')
+			}
 			buff.WriteString(cast.ToString(v))
 		}
 		return buff.String()
@@ -264,8 +270,10 @@ func getCmdVal(cmd redis.Cmder) string {
 		}
 
 		var buff bytes.Buffer
-		for _, v := range vv {
-			buff.WriteByte('\n')
+		for i, v := range vv {
+			if i > 0 {
+				buff.WriteByte('\n')
+			}
 			buff.WriteString(cast.ToString(v))
 		}
 		return buff.String()
@@ -278,8 +286,10 @@ func getCmdVal(cmd redis.Cmder) string {
 		}
 
 		var buff bytes.Buffer
-		for _, v := range vv {
-			buff.WriteByte('\n')
+		for i, v := range vv {
+			if i > 0 {
+				buff.WriteByte('\n')
+			}
 			buff.WriteString(cast.ToString(v))
 		}
 		return buff.String()
@@ -290,8 +300,10 @@ func getCmdVal(cmd redis.Cmder) string {
 		}
 
 		var buff bytes.Buffer
-		for _, v := range vv {
-			buff.WriteByte('\n')
+		for i, v := range vv {
+			if i > 0 {
+				buff.WriteByte('\n')
+			}
 			buff.WriteString(cast.ToString(v.Key))
 			buff.WriteByte('=')
 			buff.WriteString(cast.ToString(v.Value))
@@ -305,7 +317,9 @@ func getCmdVal(cmd redis.Cmder) string {
 
 		var buff bytes.Buffer
 		for k, v := range vv {
-			buff.WriteByte('\n')
+			if buff.Len() > 0 {
+				buff.WriteByte('\n')
+			}
 			buff.WriteString(cast.ToString(k))
 			buff.WriteByte('=')
 			buff.WriteString(cast.ToString(v))
@@ -319,7 +333,9 @@ func getCmdVal(cmd redis.Cmder) string {
 
 		var buff bytes.Buffer
 		for k, v := range vv {
-			buff.WriteByte('\n')
+			if buff.Len() > 0 {
+				buff.WriteByte('\n')
+			}
 			buff.WriteString(cast.ToString(k))
 			buff.WriteByte('=')
 			buff.WriteString(cast.ToString(v))
@@ -333,7 +349,9 @@ func getCmdVal(cmd redis.Cmder) string {
 
 		var buff bytes.Buffer
 		for k := range vv {
-			buff.WriteByte('\n')
+			if buff.Len() > 0 {
+				buff.WriteByte('\n')
+			}
 			buff.WriteString(cast.ToString(k))
 		}
 		return buff.String()
@@ -344,8 +362,10 @@ func getCmdVal(cmd redis.Cmder) string {
 		}
 
 		var buff bytes.Buffer
-		for _, v := range vv {
-			buff.WriteByte('\n')
+		for i, v := range vv {
+			if i > 0 {
+				buff.WriteByte('\n')
+			}
 			buff.WriteString(cast.ToString(v.Member))
 			buff.WriteByte('=')
 			buff.WriteString(cast.ToString(v.Score))
@@ -360,8 +380,10 @@ func getCmdVal(cmd redis.Cmder) string {
 		}
 
 		var buff bytes.Buffer
-		for _, v := range vv {
-			buff.WriteByte('\n')
+		for i, v := range vv {
+			if i > 0 {
+				buff.WriteByte('\n')
+			}
 			buff.WriteString(cast.ToString(v))
 		}
 		return buff.String()
