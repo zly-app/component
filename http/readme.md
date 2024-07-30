@@ -33,6 +33,9 @@ func main() {
 
 ```go
 func main() {
+	app := zapp.NewApp("test")
+	defer app.Exit()
+
 	http.ReplaceStd()
 }
 ```
