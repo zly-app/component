@@ -1,4 +1,4 @@
-package sqlx
+package xorm
 
 import (
 	"github.com/zly-app/zapp"
@@ -7,7 +7,7 @@ import (
 	"github.com/zly-app/zapp/handler"
 )
 
-var defCreator = &SqlxCreator{
+var defCreator = &xormCreator{
 	conn: conn.NewConn(),
 }
 
@@ -17,9 +17,9 @@ func init() {
 	})
 }
 
-func GetClient(name string) Client {
+func GetClient(name string) *Engine {
 	return defCreator.GetClient(name)
 }
-func GetDefClient() Client {
+func GetDefClient() *Engine {
 	return defCreator.GetDefClient()
 }

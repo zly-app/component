@@ -20,6 +20,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"   // mysql
 	_ "github.com/lib/pq"                // postgres
 	_ "github.com/mattn/go-sqlite3"      // sqlite
+	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/consts"
 	"github.com/zly-app/zapp/pkg/utils"
 	"go.opentelemetry.io/otel"
@@ -31,26 +32,21 @@ import (
 	"xorm.io/xorm/names"
 
 	"github.com/zly-app/zapp/component/conn"
-	"github.com/zly-app/zapp/core"
 )
 
-type Xorm struct {
-	app           core.IApp
-	conn          *conn.Conn
-	componentType core.ComponentType
-	name          string
+type xormCreator struct {
+	conn *conn.Conn
+	name string
 
 	tracer   trace.Tracer
 	spanOpts []trace.SpanStartOption
 }
 
-type IXormCreator interface {
+type Creator interface {
 	// 获取
-	GetXorm(name string) *Engine
+	GetClient(name string) *Engine
 	// 获取
-	GetDefXorm() *Engine
-	// 释放
-	Close()
+	GetDefClient() *Engine
 }
 
 type instance struct {
@@ -61,31 +57,22 @@ func (i *instance) Close() {
 	_ = i.Engine.Close()
 }
 
-// 创建xorm建造者
-func NewXormCreator(app core.IApp, componentType ...core.ComponentType) IXormCreator {
-	x := &Xorm{
-		app:           app,
-		conn:          conn.NewConn(),
-		componentType: DefaultComponentType,
-	}
-	if len(componentType) > 0 {
-		x.componentType = componentType[0]
-	}
-	return x
+func GetCreator() Creator {
+	return defCreator
 }
 
-func (x *Xorm) GetXorm(name string) *Engine {
+func (x *xormCreator) GetClient(name string) *Engine {
 	return x.conn.GetInstance(x.makeClient, name).(*instance).Engine
 }
 
-func (x *Xorm) GetDefXorm() *Engine {
+func (x *xormCreator) GetDefClient() *Engine {
 	return x.conn.GetInstance(x.makeClient, consts.DefaultComponentName).(*instance).Engine
 }
 
-func (x *Xorm) makeClient(name string) (conn.IInstance, error) {
+func (x *xormCreator) makeClient(name string) (conn.IInstance, error) {
 	x.name = name
 	conf := newConfig()
-	err := x.app.GetConfig().ParseComponentConfig(x.componentType, name, conf)
+	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
 	if err == nil {
 		err = conf.Check()
 	}
@@ -120,7 +107,7 @@ func (x *Xorm) makeClient(name string) (conn.IInstance, error) {
 	return &instance{e}, nil
 }
 
-func (x *Xorm) makeNameMapper(rule string) names.Mapper {
+func (x *xormCreator) makeNameMapper(rule string) names.Mapper {
 	switch strings.ToLower(rule) {
 	case "SnakeMapper":
 		return names.SnakeMapper{}
@@ -132,7 +119,7 @@ func (x *Xorm) makeNameMapper(rule string) names.Mapper {
 	return names.GonicMapper{}
 }
 
-func (x *Xorm) Close() {
+func (x *xormCreator) Close() {
 	x.conn.CloseAll()
 }
 
@@ -140,7 +127,7 @@ func (x *Xorm) Close() {
 //  xorm  hook
 // -------------
 
-func (x *Xorm) BeforeProcess(c *contexts.ContextHook) (context.Context, error) {
+func (x *xormCreator) BeforeProcess(c *contexts.ContextHook) (context.Context, error) {
 	fn, file, line := funcFileLine("xorm.io/xorm")
 
 	attrs := make([]attribute.KeyValue, 0, 8)
@@ -163,7 +150,7 @@ func (x *Xorm) BeforeProcess(c *contexts.ContextHook) (context.Context, error) {
 	return ctx, nil
 }
 
-func (x *Xorm) AfterProcess(c *contexts.ContextHook) error {
+func (x *xormCreator) AfterProcess(c *contexts.ContextHook) error {
 	defer utils.Otel.CtxEnd(c.Ctx)
 
 	if c.Err != nil {

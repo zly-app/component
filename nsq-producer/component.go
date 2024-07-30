@@ -13,18 +13,16 @@ import (
 	"time"
 
 	"github.com/nsqio/go-nsq"
+	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/consts"
-	"github.com/zly-app/zapp/core"
 )
 
-type INsqProducer interface {
+type Creator interface {
 	// 获取nsq发布者
-	GetNsqProducer(name ...string) *nsq.Producer
+	GetClient(name string) *nsq.Producer
 	// 获取nsq发布者
-	GetDefNsqProducer() *nsq.Producer
-	// 关闭
-	Close()
+	GetDefClient() *nsq.Producer
 }
 
 type instance struct {
@@ -35,40 +33,30 @@ func (i *instance) Close() {
 	i.producer.Stop()
 }
 
-type NsqProducer struct {
-	app           core.IApp
-	conn          *conn.Conn
-	componentType core.ComponentType
+type nsqCreator struct {
+	conn *conn.Conn
 }
 
-func NewNsqProducer(app core.IApp, componentType ...core.ComponentType) INsqProducer {
-	n := &NsqProducer{
-		app:           app,
-		conn:          conn.NewConn(),
-		componentType: DefaultComponentType,
-	}
-	if len(componentType) > 0 {
-		n.componentType = componentType[0]
-	}
-	return n
+func GetCreator() Creator {
+	return defCreator
 }
 
-func (r *NsqProducer) GetNsqProducer(name ...string) *nsq.Producer {
-	return r.conn.GetInstance(r.makeClient, name...).(*instance).producer
+func (r *nsqCreator) GetClient(name string) *nsq.Producer {
+	return r.conn.GetInstance(r.makeClient, name).(*instance).producer
 }
 
-func (r *NsqProducer) GetDefNsqProducer() *nsq.Producer {
+func (r *nsqCreator) GetDefClient() *nsq.Producer {
 	return r.conn.GetInstance(r.makeClient, consts.DefaultComponentName).(*instance).producer
 }
 
-func (r *NsqProducer) makeClient(name string) (conn.IInstance, error) {
+func (r *nsqCreator) makeClient(name string) (conn.IInstance, error) {
 	conf := newConfig()
-	err := r.app.GetConfig().ParseComponentConfig(r.componentType, name, conf)
+	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
 	if err != nil {
 		return nil, err
 	}
 	if err = conf.Check(); err != nil {
-		return nil, fmt.Errorf("组件%s的配置错误: %s", r.componentType, err)
+		return nil, fmt.Errorf("组件%s的配置错误: %s", DefaultComponentType, err)
 	}
 
 	nsqConf := nsq.NewConfig()
@@ -82,6 +70,6 @@ func (r *NsqProducer) makeClient(name string) (conn.IInstance, error) {
 	return &instance{producer}, err
 }
 
-func (r *NsqProducer) Close() {
+func (r *nsqCreator) Close() {
 	r.conn.CloseAll()
 }

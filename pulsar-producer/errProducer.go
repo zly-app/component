@@ -22,6 +22,6 @@ func (e errProducer) SendAsync(ctx context.Context, message *ProducerMessage, f 
 
 func (e errProducer) Flush() error { return e.err }
 
-func newErrProducer(err error) IPulsarProducer {
+func newErrProducer(err error) Client {
 	return errProducer{err}
 }

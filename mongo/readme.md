@@ -11,9 +11,7 @@
 func main() {
     app := zapp.NewApp("test")
     defer app.Exit()
-
-    creator := mongo.NewMongoCreator(app) // 创建mongo建造者
-    client := creator.GetMongo("default") // 通过mongo建造者获取mongo客户端
+    client := mongo.GetDefClient() // 获取默认客户端
 }
 ```
 

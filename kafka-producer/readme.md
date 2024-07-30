@@ -7,11 +7,8 @@
 > 此组件基于模块 [github.com/Shopify/sarama](https://github.com/Shopify/sarama)
 
 ```text
-kafka_producer.IKafkaProducer               组件接口
-kafka_producer.NewKafkaProducer             创建kafka生产者组件
-
-c.GetKafkaSyncProducer(name ...string)      获取kafka同步生产者
-c.GetKafkaAsyncProducer(name ...string)     获取kafka异步生产者
+kafka_producer.GetDefClient()          // 获取kafka同步生产者
+kafka_producer.GetDefAsyncClient()     // 获取kafka异步生产者
 ```
 
 # 同步生产者示例
@@ -24,32 +21,12 @@ import (
 	"go.uber.org/zap"
 	"github.com/zly-app/component/kafka-producer"
 	"github.com/zly-app/zapp"
-	"github.com/zly-app/zapp/core"
 )
 
-type Component struct {
-	core.IComponent
-	kafka_producer.IKafkaProducer
-}
-
-func (c *Component) Close() {
-	c.IComponent.Close()
-	c.IKafkaProducer.Close()
-}
-
 func main() {
-	app := zapp.NewApp("test",
-		zapp.WithCustomComponent(func(app core.IApp) core.IComponent {
-			return &Component{
-				IComponent:     app.GetComponent(),
-				IKafkaProducer: kafka_producer.NewKafkaProducer(app),
-			}
-		}),
-	)
+	app := zapp.NewApp("test")
 	defer app.Exit()
 
-	c := app.GetComponent().(*Component)
-	p := c.GetKafkaSyncProducer()
 	for i := 0; i < 10; i++ {
 		msg := &kafka_producer.ProducerMessage{
 			Topic:    "test",
@@ -57,12 +34,12 @@ func main() {
 			Value:    kafka_producer.StringEncoder("v" + strconv.Itoa(i)),
 			Metadata: i,
 		}
-		partition, offset, err := p.SendMessage(msg)
+		partition, offset, err := kafka_producer.GetDefClient().SendMessage(msg)
 		if err != nil {
-			c.Error("发送失败", zap.Error(err))
+			app.Error("发送失败", zap.Error(err))
 			continue
 		}
-		c.Info("发送成功", zap.Int32("partition", partition), zap.Int64("offset", offset))
+		app.Info("发送成功", zap.Int32("partition", partition), zap.Int64("offset", offset))
 	}
 }
 ```
@@ -78,34 +55,14 @@ import (
 	"go.uber.org/zap"
 	"github.com/zly-app/component/kafka-producer"
 	"github.com/zly-app/zapp"
-	"github.com/zly-app/zapp/core"
 )
 
-type Component struct {
-	core.IComponent
-	kafka_producer.IKafkaProducer
-}
-
-func (c *Component) Close() {
-	c.IComponent.Close()
-	c.IKafkaProducer.Close()
-}
-
 func main() {
-	app := zapp.NewApp("test",
-		zapp.WithCustomComponent(func(app core.IApp) core.IComponent {
-			return &Component{
-				IComponent:     app.GetComponent(),
-				IKafkaProducer: kafka_producer.NewKafkaProducer(app),
-			}
-		}),
-	)
+	app := zapp.NewApp("test")
 	defer app.Exit()
 
-	c := app.GetComponent().(*Component)
-	p := c.GetKafkaAsyncProducer()
 	for i := 0; i < 10; i++ {
-		p.Input() <- &kafka_producer.ProducerMessage{
+		kafka_producer.GetDefAsyncClient().Input() <- &kafka_producer.ProducerMessage{
 			Topic:    "test",
 			Key:      kafka_producer.StringEncoder("k" + strconv.Itoa(i)),
 			Value:    kafka_producer.StringEncoder("v" + strconv.Itoa(i)),
@@ -118,11 +75,11 @@ func main() {
 	for i := 0; i < 10; i++ {
 		select {
 		case msg := <-p.Errors():
-			c.Error("消息发送失败", zap.Any("msg", msg.Msg), zap.Error(msg.Err))
+			app.Error("消息发送失败", zap.Any("msg", msg.Msg), zap.Error(msg.Err))
 		case msg := <-p.Successes():
-			c.Info("消息发送成功", zap.Any("msg", msg))
+			app.Info("消息发送成功", zap.Any("msg", msg))
 		case <-ta.C:
-			c.Error("超时")
+			app.Error("超时")
 			return
 		}
 	}
@@ -133,7 +90,9 @@ func main() {
 
 > 默认组件类型为 `kafka-producer`
 
-```toml
-[components.kafka-producer.default]
-Address = "localhost:9092"                # 地址, 多个地址用半角逗号连接
+```yaml
+components:
+  kafka-producer:
+    default:
+      Address: "localhost:9092"                # 地址, 多个地址用半角逗号连接
 ```

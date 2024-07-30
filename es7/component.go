@@ -17,22 +17,20 @@ import (
 
 	elastic7 "github.com/olivere/elastic/v7"
 	"github.com/zly-app/component/http"
+	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/consts"
-	"github.com/zly-app/zapp/core"
 )
 
-type IES7 interface {
+type Creator interface {
 	// 获取es7客户端
-	GetES7(name ...string) *elastic7.Client
-	// 获取es7客户端
-	GetDefES7() *elastic7.Client
-	// 关闭
-	Close()
+	GetClient(name string) *Client
+	// 获取默认es7客户端
+	GetDefClient() *Client
 }
 
 type instance struct {
-	*elastic7.Client
+	*Client
 }
 
 func (i *instance) Close() {
@@ -40,35 +38,24 @@ func (i *instance) Close() {
 }
 
 type ES7 struct {
-	app           core.IApp
-	conn          *conn.Conn
-	componentType core.ComponentType
+	conn *conn.Conn
 }
 
-// 创建es7组件
-func NewES7(app core.IApp, componentType ...core.ComponentType) IES7 {
-	e := &ES7{
-		app:           app,
-		conn:          conn.NewConn(),
-		componentType: DefaultComponentType,
-	}
-	if len(componentType) > 0 {
-		e.componentType = componentType[0]
-	}
-	return e
+func GetCreator() Creator {
+	return defCreator
 }
 
-func (e *ES7) GetES7(name ...string) *elastic7.Client {
-	return e.conn.GetInstance(e.makeClient, name...).(*instance).Client
+func (e *ES7) GetClient(name string) *Client {
+	return e.conn.GetInstance(e.makeClient, name).(*instance).Client
 }
 
-func (e *ES7) GetDefES7() *elastic7.Client {
+func (e *ES7) GetDefClient() *Client {
 	return e.conn.GetInstance(e.makeClient, consts.DefaultComponentName).(*instance).Client
 }
 
 func (e *ES7) makeClient(name string) (conn.IInstance, error) {
 	conf := newConfig()
-	err := e.app.GetConfig().ParseComponentConfig(e.componentType, name, conf)
+	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
 	if err == nil {
 		err = conf.Check()
 	}

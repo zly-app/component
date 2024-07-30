@@ -16,6 +16,6 @@ func (e errProducer) SendAsync(ctx context.Context, msg *ProducerMessage, callba
 	callback(e.err)
 }
 
-func newErrProducer(err error) IMQTTProducer {
+func newErrProducer(err error) Client {
 	return errProducer{err}
 }

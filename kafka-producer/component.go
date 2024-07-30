@@ -6,27 +6,25 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
+	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/consts"
-	"github.com/zly-app/zapp/core"
 	"golang.org/x/net/proxy"
 )
 
-type IKafkaProducer interface {
+type Creator interface {
 	// 获取kafka同步生产者
-	GetKafkaSyncProducer(name ...string) SyncProducer
+	GetClient(name string) Client
 	// 获取kafka同步生产者
-	GetDefKafkaSyncProducer() SyncProducer
+	GetDefClient() Client
 	// 获取kafka异步生产者
-	GetKafkaAsyncProducer(name ...string) AsyncProducer
+	GetAsyncClient(name string) AsyncClient
 	// 获取kafka异步生产者
-	GetDefKafkaAsyncProducer() AsyncProducer
-	// 关闭
-	Close()
+	GetDefAsyncClient() AsyncClient
 }
 
 // 同步生产者
-type SyncProducer interface {
+type Client interface {
 	SendMessage(msg *ProducerMessage) (partition int32, offset int64, err error)
 	SendMessages(msgs []*ProducerMessage) error
 }
@@ -43,7 +41,7 @@ func (i *syncInstance) Close() {
 }
 
 // 异步生产者
-type AsyncProducer interface {
+type AsyncClient interface {
 	Input() chan<- *ProducerMessage
 	Successes() <-chan *ProducerMessage
 	Errors() <-chan *ProducerError
@@ -60,51 +58,40 @@ func (i *asyncInstance) Close() {
 	}
 }
 
-type KafkaProducer struct {
-	app           core.IApp
-	connSync      *conn.Conn
-	connAsync     *conn.Conn
-	componentType core.ComponentType
+type kafkaProducer struct {
+	connSync  *conn.Conn
+	connAsync *conn.Conn
 }
 
-func NewKafkaProducer(app core.IApp, componentType ...core.ComponentType) IKafkaProducer {
-	k := &KafkaProducer{
-		app:           app,
-		connSync:      conn.NewConn(),
-		connAsync:     conn.NewConn(),
-		componentType: DefaultComponentType,
-	}
-	if len(componentType) > 0 {
-		k.componentType = componentType[0]
-	}
-	return k
+func GetCreator() Creator {
+	return defCreator
 }
 
-func (k *KafkaProducer) GetKafkaSyncProducer(name ...string) SyncProducer {
-	return k.connSync.GetInstance(k.makeSyncClient, name...).(*syncInstance).syncProducer
+func (k *kafkaProducer) GetClient(name string) Client {
+	return k.connSync.GetInstance(k.makeSyncClient, name).(*syncInstance).syncProducer
 }
 
-func (k *KafkaProducer) GetDefKafkaSyncProducer() SyncProducer {
+func (k *kafkaProducer) GetDefClient() Client {
 	return k.connSync.GetInstance(k.makeSyncClient, consts.DefaultConfigFiles).(*syncInstance).syncProducer
 }
 
-func (k *KafkaProducer) GetKafkaAsyncProducer(name ...string) AsyncProducer {
-	return k.connAsync.GetInstance(k.makeAsyncClient, name...).(*asyncInstance).asyncProducer
+func (k *kafkaProducer) GetAsyncClient(name string) AsyncClient {
+	return k.connAsync.GetInstance(k.makeAsyncClient, name).(*asyncInstance).asyncProducer
 }
 
-func (k *KafkaProducer) GetDefKafkaAsyncProducer() AsyncProducer {
+func (k *kafkaProducer) GetDefAsyncClient() AsyncClient {
 	return k.connAsync.GetInstance(k.makeAsyncClient, consts.DefaultComponentName).(*asyncInstance).asyncProducer
 }
 
 // 生成配置
-func (k *KafkaProducer) makeConf(name string) (*Config, error) {
+func (k *kafkaProducer) makeConf(name string) (*Config, error) {
 	conf := newConfig()
-	err := k.app.GetConfig().ParseComponentConfig(k.componentType, name, conf)
+	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
 	if err != nil {
 		return nil, err
 	}
 	if err = conf.Check(); err != nil {
-		return nil, fmt.Errorf("组件%s的配置错误: %s", k.componentType, err)
+		return nil, fmt.Errorf("组件%s的配置错误: %s", DefaultComponentType, err)
 	}
 
 	kConf := sarama.NewConfig()
@@ -159,7 +146,7 @@ func (k *KafkaProducer) makeConf(name string) (*Config, error) {
 }
 
 // 生成同步客户端
-func (k *KafkaProducer) makeSyncClient(name string) (conn.IInstance, error) {
+func (k *kafkaProducer) makeSyncClient(name string) (conn.IInstance, error) {
 	conf, err := k.makeConf(name)
 	if err != nil {
 		return nil, err
@@ -177,7 +164,7 @@ func (k *KafkaProducer) makeSyncClient(name string) (conn.IInstance, error) {
 }
 
 // 生成异步客户端
-func (k *KafkaProducer) makeAsyncClient(name string) (conn.IInstance, error) {
+func (k *kafkaProducer) makeAsyncClient(name string) (conn.IInstance, error) {
 	conf, err := k.makeConf(name)
 	if err != nil {
 		return nil, err
@@ -190,7 +177,7 @@ func (k *KafkaProducer) makeAsyncClient(name string) (conn.IInstance, error) {
 	return &asyncInstance{asyncProducer: producer}, nil
 }
 
-func (k KafkaProducer) Close() {
+func (k kafkaProducer) Close() {
 	k.connSync.CloseAll()
 	k.connAsync.CloseAll()
 }

@@ -38,10 +38,8 @@ func main() {
 	app := zapp.NewApp("test")
 	defer app.Exit()
 
-	creator := pulsar_producer.NewProducerCreator(app) // 创建一个建造者
-
 	for i := 0; i < 10; i++ {
-		producer := creator.GetPulsarProducer() // 获取生产者
+		producer := pulsar_producer.GetDefClient() // 获取默认生产者
 		msg := &pulsar_producer.ProducerMessage{Payload: []byte("hello" + strconv.Itoa(i))}
 		_, err := producer.Send(app.BaseContext(), msg) // 发送同步消息
 		if err != nil {

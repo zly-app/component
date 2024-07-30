@@ -8,22 +8,21 @@ import (
 
 	"github.com/apache/pulsar-client-go/pulsar"
 	"github.com/apache/pulsar-client-go/pulsar/log"
+	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/consts"
-	"github.com/zly-app/zapp/core"
 	"github.com/zly-app/zapp/filter"
 	"github.com/zly-app/zapp/pkg/utils"
 )
 
 // pulsar 生产者建造者
-type IPulsarProducerCreator interface {
-	GetPulsarProducer(name ...string) IPulsarProducer
-	GetDefPulsarProducer() IPulsarProducer
-	Close()
+type Creator interface {
+	GetClient(name string) Client
+	GetDefClient() Client
 }
 
-// Pulsar生产者
-type IPulsarProducer interface {
+// Pulsar生产者客户端
+type Client interface {
 	// topic
 	Topic() string
 	// 生产者名
@@ -36,28 +35,27 @@ type IPulsarProducer interface {
 	Flush() error
 }
 
-type ProducerCreator struct {
-	app  core.IApp
+type producerCreator struct {
 	conn *conn.Conn
 }
 
-func (p *ProducerCreator) GetPulsarProducer(name ...string) IPulsarProducer {
-	ins, err := p.conn.GetConn(p.makeProducer, name...)
+func (p *producerCreator) GetClient(name string) Client {
+	ins, err := p.conn.GetConn(p.makeProducer, name)
 	if err != nil {
 		return newErrProducer(err)
 	}
-	return ins.(IPulsarProducer)
+	return ins.(Client)
 }
 
-func (p *ProducerCreator) GetDefPulsarProducer() IPulsarProducer {
-	return p.GetPulsarProducer(consts.DefaultComponentName)
+func (p *producerCreator) GetDefClient() Client {
+	return p.GetClient(consts.DefaultComponentName)
 }
 
-func (p *ProducerCreator) Close() { p.conn.CloseAll() }
+func (p *producerCreator) Close() { p.conn.CloseAll() }
 
-func (p *ProducerCreator) makeProducer(name string) (conn.IInstance, error) {
+func (p *producerCreator) makeProducer(name string) (conn.IInstance, error) {
 	conf := NewConfig()
-	err := p.app.GetConfig().ParseComponentConfig(DefaultComponentType, name, conf, true)
+	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf, true)
 	if err != nil {
 		return nil, fmt.Errorf("获取组件<%s.%s>配置失败: %v", DefaultComponentType, name, err)
 	}
@@ -69,16 +67,11 @@ func (p *ProducerCreator) makeProducer(name string) (conn.IInstance, error) {
 	return producer, nil
 }
 
-// 创建生产者建造者
-func NewProducerCreator(app core.IApp) IPulsarProducerCreator {
-	p := &ProducerCreator{
-		app:  app,
-		conn: conn.NewConn(),
-	}
-	return p
+func GetCreator() Creator {
+	return defCreator
 }
 
-var _ IPulsarProducer = (*PulsarProducer)(nil)
+var _ Client = (*PulsarProducer)(nil)
 var _ conn.IInstance = (*PulsarProducer)(nil)
 
 type PulsarProducer struct {

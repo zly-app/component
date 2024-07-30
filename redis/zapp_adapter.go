@@ -22,11 +22,11 @@ import (
 // 默认组件类型
 const DefaultComponentType core.ComponentType = "redis"
 
-type IRedisCreator interface {
+type Creator interface {
 	// 获取redis客户端
-	GetRedis(name string) UniversalClient
+	GetClient(name string) UniversalClient
 	// 获取默认redis客户端
-	GetDefRedis() UniversalClient
+	GetDefClient() UniversalClient
 }
 
 type instance struct {
@@ -41,20 +41,15 @@ type RedisCreatorAdapter struct {
 	conn *conn.Conn
 }
 
-// deprecated: use GetRedisCreator
-func NewRedisCreator(app core.IApp) IRedisCreator {
+func GetCreator() Creator {
 	return defCreator
 }
 
-func GetRedisCreator() IRedisCreator {
-	return defCreator
-}
-
-func (r *RedisCreatorAdapter) GetRedis(name string) UniversalClient {
+func (r *RedisCreatorAdapter) GetClient(name string) UniversalClient {
 	return r.conn.GetInstance(r.makeClient, name).(*instance).client
 }
 
-func (r *RedisCreatorAdapter) GetDefRedis() UniversalClient {
+func (r *RedisCreatorAdapter) GetDefClient() UniversalClient {
 	return r.conn.GetInstance(r.makeClient, consts.DefaultComponentName).(*instance).client
 }
 

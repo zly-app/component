@@ -11,8 +11,7 @@ func main() {
     app := zapp.NewApp("test")
     defer app.Exit()
 
-    creator := xorm.NewXormCreator(app) // 创建建造者
-    client := creator.GetXorm("default") // 通过建造者获取客户端
+    client := xorm.GetDefClient() // 获取默认客户端
 }
 ``` 
 
@@ -67,28 +66,29 @@ components:
 1. 将engine的某一次查询作为子span记录
 
 ```go
-func MyFun(c xorm.IXorm){
+func MyFun(){
     span := opentracing.StartSpan("my_fun") // 创建span
     defer span.Finish() // 别忘记关闭
     ctx := opentracing.ContextWithSpan(context.Background(), span) // 将span存入ctx
 
     var a interface{}
-    c.GetXorm().Context(ctx). // 设置ctx, 会根据ctx中带的span自动生成子span
-        Sql(`select 1;`).Find(&a)
+    xorm.GetDefClient().Context(ctx). // 设置ctx, 会根据ctx中带的span自动生成子span
+        SQL(`select 1;`).Find(&a)
 }
 ```
 
 2. 将session中的每一次查询作为子span记录
 
 ```go
-func MyFun(c xorm.IXorm){
+func MyFun(){
     span := opentracing.StartSpan("my_fun") // 创建span
     defer span.Finish() // 别忘记关闭
     ctx := opentracing.ContextWithSpan(context.Background(), span) // 将span存入ctx
-    session := c.GetXorm().NewSession().Context(ctx) // 设置ctx, session中的每次操作都会自动生成一个子span
+    session := xorm.GetDefClient().NewSession().Context(ctx) // 设置ctx, session中的每次操作都会自动生成一个子span
+	defer session.Close() // 使用完毕别忘记关闭session
 
     var a, b interface{}
-    session.Sql(`select 1;`).Find(&a)
-    session.Sql(`select 1;`).Find(&b)
+    session.SQL(`select 1;`).Find(&a)
+    session.SQL(`select 1;`).Find(&b)
 }
 ```

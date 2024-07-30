@@ -40,10 +40,8 @@ func main() {
 	app := zapp.NewApp("test-pulsar")
 	defer app.Exit()
 
-	creator := mqtt_producer.NewProducerCreator(app)
-
 	for i := 0; i < 3; i++ {
-		producer := creator.GetDefMQTTProducer() // 获取生产者
+		producer := mqtt_producer.GetDefClient() // 获取默认生产者客户端
 		msg := &mqtt_producer.ProducerMessage{Topic: "test", Qos: 1, Payload: "hello" + strconv.Itoa(i)}
 		err := producer.Send(app.BaseContext(), msg) // 发送同步消息
 		if err != nil {

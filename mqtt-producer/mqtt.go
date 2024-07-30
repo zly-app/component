@@ -7,70 +7,62 @@ import (
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/consts"
-	"github.com/zly-app/zapp/core"
 	"github.com/zly-app/zapp/filter"
 )
 
-type IMQTTProducerCreator interface {
-	GetMQTTProducer(name ...string) IMQTTProducer
-	GetDefMQTTProducer() IMQTTProducer
-	Close()
+type Creator interface {
+	GetClient(name string) Client
+	GetDefClient() Client
 }
 
 type mqttProducerCreator struct {
-	app  core.IApp
 	conn *conn.Conn
 }
 
-func (m *mqttProducerCreator) GetMQTTProducer(name ...string) IMQTTProducer {
-	ins, err := m.conn.GetConn(m.makeProducer, name...)
+func (m *mqttProducerCreator) GetClient(name string) Client {
+	ins, err := m.conn.GetConn(m.makeProducer, name)
 	if err != nil {
 		return newErrProducer(err)
 	}
-	return ins.(IMQTTProducer)
+	return ins.(Client)
 }
 
-func (m *mqttProducerCreator) GetDefMQTTProducer() IMQTTProducer {
-	return m.GetMQTTProducer(consts.DefaultComponentName)
+func (m *mqttProducerCreator) GetDefClient() Client {
+	return m.GetClient(consts.DefaultComponentName)
 }
 
 func (m *mqttProducerCreator) Close() { m.conn.CloseAll() }
 
 func (m *mqttProducerCreator) makeProducer(name string) (conn.IInstance, error) {
 	conf := NewConfig()
-	err := m.app.GetConfig().ParseComponentConfig(DefaultComponentType, name, conf, true)
+	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf, true)
 	if err != nil {
 		return nil, fmt.Errorf("获取组件<%s.%s>配置失败: %v", DefaultComponentType, name, err)
 	}
 
-	producer, err := NewProducer(name, m.app, conf)
+	producer, err := NewProducer(name, conf)
 	if err != nil {
 		return nil, err
 	}
 	return producer, nil
 }
 
-type IMQTTProducer interface {
+type Client interface {
 	// 发送消息
 	Send(ctx context.Context, msg *ProducerMessage) error
 	// 异步发送消息
 	SendAsync(ctx context.Context, msg *ProducerMessage, callback func(error))
 }
 
-// 创建生产者建造者
-func NewProducerCreator(app core.IApp) IMQTTProducerCreator {
-	p := &mqttProducerCreator{
-		app:  app,
-		conn: conn.NewConn(),
-	}
-	return p
+func GetCreator() Creator {
+	return defCreator
 }
 
 type MQTTProducer struct {
 	name   string
-	app    core.IApp
 	conf   *Config
 	client mqtt.Client
 }
@@ -82,8 +74,8 @@ type ProducerMessage struct {
 	Payload  string // 消息负载
 }
 
-func NewProducer(name string, app core.IApp, conf *Config) (*MQTTProducer, error) {
-	if err := conf.Check(app); err != nil {
+func NewProducer(name string, conf *Config) (*MQTTProducer, error) {
+	if err := conf.Check(); err != nil {
 		return nil, fmt.Errorf("配置检查失败: %v", err)
 	}
 
@@ -107,7 +99,6 @@ func NewProducer(name string, app core.IApp, conf *Config) (*MQTTProducer, error
 
 	return &MQTTProducer{
 		name:   name,
-		app:    app,
 		conf:   conf,
 		client: client,
 	}, nil
@@ -139,7 +130,7 @@ func (p *MQTTProducer) SendAsync(ctx context.Context, msg *ProducerMessage, call
 		return nil, nil
 	})
 
-	p.app.GetComponent().GetGPool().Go(func() error {
+	zapp.App().GetComponent().GetGPool().Go(func() error {
 		waitOk := token.WaitTimeout(time.Duration(p.conf.WaitConnectedTimeMs) * time.Millisecond)
 		if !waitOk {
 			return fmt.Errorf("send to mqtt topic: %v timeout", msg.Topic)

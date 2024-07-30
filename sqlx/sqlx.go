@@ -16,14 +16,14 @@ import (
 	"github.com/zly-app/zapp/consts"
 )
 
-type SqlxCreator struct {
+type sqlxCreator struct {
 	conn *conn.Conn
 }
 
-type ISqlxCreator interface {
-	// 获取
+type Creator interface {
+	// 获取客户端
 	GetClient(name string) Client
-	// 获取
+	// 获取默认客户端
 	GetDefClient() Client
 }
 type instance struct {
@@ -34,11 +34,11 @@ func (i *instance) Close() {
 	_ = i.client.GetDB().Close()
 }
 
-func GetSqlxCreator() ISqlxCreator {
+func GetCreator() Creator {
 	return defCreator
 }
 
-func (s *SqlxCreator) GetClient(name string) Client {
+func (s *sqlxCreator) GetClient(name string) Client {
 	ins, err := s.conn.GetConn(s.makeClient, name)
 	if err != nil {
 		return newErrClient(err)
@@ -46,11 +46,11 @@ func (s *SqlxCreator) GetClient(name string) Client {
 	return ins.(*instance).client
 }
 
-func (s *SqlxCreator) GetDefClient() Client {
+func (s *sqlxCreator) GetDefClient() Client {
 	return s.GetClient(consts.DefaultComponentName)
 }
 
-func (s *SqlxCreator) makeClient(name string) (conn.IInstance, error) {
+func (s *sqlxCreator) makeClient(name string) (conn.IInstance, error) {
 	conf := newConfig()
 	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
 	if err == nil {
@@ -74,6 +74,6 @@ func (s *SqlxCreator) makeClient(name string) (conn.IInstance, error) {
 	return &instance{client}, nil
 }
 
-func (s *SqlxCreator) Close() {
+func (s *sqlxCreator) Close() {
 	s.conn.CloseAll()
 }
