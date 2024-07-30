@@ -7,5 +7,5 @@ require (
 	github.com/redis/go-redis/extra/redisotel/v9 v9.0.5
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/spf13/cast v1.3.0
-	github.com/zly-app/zapp v1.3.7
+	github.com/zly-app/zapp v1.3.17
 )

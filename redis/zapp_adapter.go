@@ -12,6 +12,7 @@ import (
 	"fmt"
 
 	"github.com/redis/go-redis/extra/redisotel/v9"
+	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/consts"
 	"github.com/zly-app/zapp/core"
@@ -21,21 +22,11 @@ import (
 // 默认组件类型
 const DefaultComponentType core.ComponentType = "redis"
 
-// 当前组件类型
-var nowComponentType = DefaultComponentType
-
-// 设置组件类型, 这个函数应该在 zapp.NewApp 之前调用
-func SetComponentType(t core.ComponentType) {
-	nowComponentType = t
-}
-
 type IRedisCreator interface {
 	// 获取redis客户端
 	GetRedis(name string) UniversalClient
 	// 获取默认redis客户端
 	GetDefRedis() UniversalClient
-	// 关闭
-	Close()
 }
 
 type instance struct {
@@ -47,18 +38,16 @@ func (i *instance) Close() {
 }
 
 type RedisCreatorAdapter struct {
-	app           core.IApp
-	conn          *conn.Conn
-	componentType core.ComponentType
+	conn *conn.Conn
 }
 
+// deprecated: use GetRedisCreator
 func NewRedisCreator(app core.IApp) IRedisCreator {
-	r := &RedisCreatorAdapter{
-		app:           app,
-		conn:          conn.NewConn(),
-		componentType: nowComponentType,
-	}
-	return r
+	return defCreator
+}
+
+func GetRedisCreator() IRedisCreator {
+	return defCreator
 }
 
 func (r *RedisCreatorAdapter) GetRedis(name string) UniversalClient {
@@ -71,7 +60,7 @@ func (r *RedisCreatorAdapter) GetDefRedis() UniversalClient {
 
 func (r *RedisCreatorAdapter) makeClient(name string) (conn.IInstance, error) {
 	conf := NewRedisConfig()
-	err := r.app.GetConfig().ParseComponentConfig(r.componentType, name, conf)
+	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
 	if err != nil {
 		return nil, fmt.Errorf("解析redis客户端配置错误: %v", err)
 	}
@@ -81,7 +70,7 @@ func (r *RedisCreatorAdapter) makeClient(name string) (conn.IInstance, error) {
 		return nil, fmt.Errorf("创建redis客户端失败: %v", err)
 	}
 
-	if err := InstrumentTracing(string(r.componentType), name, client); err != nil {
+	if err := InstrumentTracing(string(DefaultComponentType), name, client); err != nil {
 		logger.Log.Error("redisotel.InstrumentTracing err", err)
 	}
 
