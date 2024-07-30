@@ -12,8 +12,7 @@ func main() {
     app := zapp.NewApp("test")
     defer app.Exit()
 
-    creator := redis.NewRedisCreator(app) // 创建redis建造者
-    client := creator.GetRedis("default") // 通过redis建造者获取redis客户端
+    client := creator.GetDefClient() // 获取redis客户端
 }
 ```
 

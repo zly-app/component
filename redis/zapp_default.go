@@ -18,11 +18,11 @@ func init() {
 }
 
 // 获取redis客户端
-func GetRedis(name string) UniversalClient {
+func GetClient(name string) UniversalClient {
 	return defCreator.GetRedis(name)
 }
 
 // 获取默认redis客户端
-func GetDefRedis() UniversalClient {
+func GetDefClient() UniversalClient {
 	return defCreator.GetDefRedis()
 }
