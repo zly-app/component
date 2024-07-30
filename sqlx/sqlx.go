@@ -5,30 +5,26 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-
-	"github.com/zly-app/zapp/component/conn"
-	"github.com/zly-app/zapp/consts"
-	"github.com/zly-app/zapp/core"
+	"github.com/zly-app/zapp"
 
 	_ "github.com/ClickHouse/clickhouse-go" // clickhosue
 	_ "github.com/denisenkom/go-mssqldb"    // mssql
 	_ "github.com/go-sql-driver/mysql"      // mysql
 	_ "github.com/lib/pq"                   // postgres
 	_ "github.com/mattn/go-sqlite3"         // sqlite
+	"github.com/zly-app/zapp/component/conn"
+	"github.com/zly-app/zapp/consts"
 )
 
-type Sqlx struct {
-	app  core.IApp
+type SqlxCreator struct {
 	conn *conn.Conn
 }
 
-type ISqlx interface {
+type ISqlxCreator interface {
 	// 获取
-	GetSqlx(name ...string) Client
+	GetClient(name string) Client
 	// 获取
-	GetDefSqlx() Client
-	// 释放
-	Close()
+	GetDefClient() Client
 }
 type instance struct {
 	client Client
@@ -38,29 +34,25 @@ func (i *instance) Close() {
 	_ = i.client.GetDB().Close()
 }
 
-func NewSqlx(app core.IApp) ISqlx {
-	s := &Sqlx{
-		app:  app,
-		conn: conn.NewConn(),
-	}
-	return s
+func GetSqlxCreator() ISqlxCreator {
+	return defCreator
 }
 
-func (s *Sqlx) GetSqlx(name ...string) Client {
-	ins, err := s.conn.GetConn(s.makeClient, name...)
+func (s *SqlxCreator) GetClient(name string) Client {
+	ins, err := s.conn.GetConn(s.makeClient, name)
 	if err != nil {
 		return newErrClient(err)
 	}
 	return ins.(*instance).client
 }
 
-func (s *Sqlx) GetDefSqlx() Client {
-	return s.GetSqlx(consts.DefaultComponentName)
+func (s *SqlxCreator) GetDefClient() Client {
+	return s.GetClient(consts.DefaultComponentName)
 }
 
-func (s *Sqlx) makeClient(name string) (conn.IInstance, error) {
+func (s *SqlxCreator) makeClient(name string) (conn.IInstance, error) {
 	conf := newConfig()
-	err := s.app.GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
+	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
 	if err == nil {
 		err = conf.Check()
 	}
@@ -82,6 +74,6 @@ func (s *Sqlx) makeClient(name string) (conn.IInstance, error) {
 	return &instance{client}, nil
 }
 
-func (s *Sqlx) Close() {
+func (s *SqlxCreator) Close() {
 	s.conn.CloseAll()
 }
