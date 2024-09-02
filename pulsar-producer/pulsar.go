@@ -8,6 +8,7 @@ import (
 
 	"github.com/apache/pulsar-client-go/pulsar"
 	"github.com/apache/pulsar-client-go/pulsar/log"
+	"github.com/sirupsen/logrus"
 	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/consts"
@@ -97,7 +98,8 @@ func NewProducer(name string, conf *Config) (*PulsarProducer, error) {
 		OperationTimeout:        time.Duration(conf.OperationTimeout) * time.Millisecond,
 		ListenerName:            conf.ListenerName,
 		MaxConnectionsPerBroker: 1,
-		Logger:                  log.DefaultNopLogger(),
+		//Logger:                  log.DefaultNopLogger(),
+		Logger: log.NewLoggerWithLogrus(logrus.StandardLogger()),
 	}
 	if conf.AuthBasicUser != "" {
 		auth, err := pulsar.NewAuthenticationBasic(conf.AuthBasicUser, conf.AuthBasicPassword)
