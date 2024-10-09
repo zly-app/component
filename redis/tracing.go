@@ -63,7 +63,7 @@ func (th *tracingHook) DialHook(hook redis.DialHook) redis.DialHook {
 	return func(ctx context.Context, network, addr string) (net.Conn, error) {
 		ctx, chain := filter.GetClientFilter(ctx, th.clientType, th.clientName, "Dial")
 		meta := filter.GetCallMeta(ctx)
-		meta.AddCallersSkip(3)
+		meta.AddCallersSkip(4)
 		req := &dialReq{
 			Network: network,
 			Addr:    addr,
@@ -95,7 +95,7 @@ func (th *tracingHook) ProcessHook(hook redis.ProcessHook) redis.ProcessHook {
 	return func(ctx context.Context, cmd redis.Cmder) error {
 		ctx, chain := filter.GetClientFilter(ctx, th.clientType, th.clientName, cmd.FullName())
 		meta := filter.GetCallMeta(ctx)
-		meta.AddCallersSkip(4)
+		meta.AddCallersSkip(3)
 		req := &cmdReq{
 			cmd:       cmd,
 			CmdString: rediscmd.CmdString(cmd),
