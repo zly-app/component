@@ -7,11 +7,10 @@ import (
 	"net"
 	"time"
 
-	"github.com/redis/go-redis/extra/rediscmd/v9"
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/cast"
-
 	"github.com/zly-app/zapp/filter"
+	"github.com/zlyuancn/zstr"
 )
 
 func InstrumentTracing(clientType, dbname string, rdb redis.UniversalClient) error {
@@ -98,7 +97,7 @@ func (th *tracingHook) ProcessHook(hook redis.ProcessHook) redis.ProcessHook {
 		meta.AddCallersSkip(3)
 		req := &cmdReq{
 			cmd:       cmd,
-			CmdString: rediscmd.CmdString(cmd),
+			CmdString: getCmdArg(cmd),
 		}
 		_, err := chain.Handle(ctx, req, func(ctx context.Context, req interface{}) (rsp interface{}, err error) {
 			r := req.(*cmdReq)
@@ -132,7 +131,7 @@ func (th *tracingHook) ProcessPipelineHook(
 		meta.AddCallersSkip(4)
 		cmdStrings := make([]string, len(cmds))
 		for i, c := range cmds {
-			cmdStrings[i] = rediscmd.CmdString(c)
+			cmdStrings[i] = getCmdArg(c)
 		}
 		req := &pipeReq{
 			cmds:       cmds,
@@ -205,6 +204,23 @@ type ICmdValMapStruct interface {
 }
 type ICmdValZs interface {
 	Val() []redis.Z
+}
+
+func getCmdArg(cmd redis.Cmder) string {
+	var b bytes.Buffer
+	{
+	}
+	const numArgLimit = 64
+	for i, arg := range cmd.Args() {
+		if i > numArgLimit {
+			break
+		}
+		if i > 0 {
+			b.WriteByte(' ')
+		}
+		b.WriteString(zstr.GetString(arg, false))
+	}
+	return b.String()
 }
 
 func getCmdVal(cmd redis.Cmder) string {
