@@ -88,6 +88,7 @@ type cmdReq struct {
 }
 type cmdRsp struct {
 	Result string
+	ErrNil bool
 }
 
 func (th *tracingHook) ProcessHook(hook redis.ProcessHook) redis.ProcessHook {
@@ -99,9 +100,12 @@ func (th *tracingHook) ProcessHook(hook redis.ProcessHook) redis.ProcessHook {
 			cmd:       cmd,
 			CmdString: getCmdArg(cmd),
 		}
-		_, err := chain.Handle(ctx, req, func(ctx context.Context, req interface{}) (rsp interface{}, err error) {
+		rsp, err := chain.Handle(ctx, req, func(ctx context.Context, req interface{}) (rsp interface{}, err error) {
 			r := req.(*cmdReq)
 			err = hook(ctx, r.cmd)
+			if err == redis.Nil {
+				return &cmdRsp{ErrNil: true}, nil
+			}
 			if err != nil {
 				return nil, err
 			}
@@ -109,7 +113,14 @@ func (th *tracingHook) ProcessHook(hook redis.ProcessHook) redis.ProcessHook {
 			sp := &cmdRsp{Result: val}
 			return sp, nil
 		})
-		return err
+		if err != nil {
+			return err
+		}
+		sp := rsp.(*cmdRsp)
+		if sp.ErrNil {
+			return redis.Nil
+		}
+		return nil
 	}
 }
 
@@ -120,6 +131,7 @@ type pipeReq struct {
 }
 type pipeRsp struct {
 	Result []string
+	ErrNil bool
 }
 
 func (th *tracingHook) ProcessPipelineHook(
@@ -138,19 +150,26 @@ func (th *tracingHook) ProcessPipelineHook(
 			CmdNums:    len(cmds),
 			CmdStrings: cmdStrings,
 		}
-		_, err := chain.Handle(ctx, req, func(ctx context.Context, req interface{}) (rsp interface{}, err error) {
+		rsp, err := chain.Handle(ctx, req, func(ctx context.Context, req interface{}) (rsp interface{}, err error) {
 			r := req.(*pipeReq)
 			err = hook(ctx, r.cmds)
-			if err != nil {
+			if err != nil && err != redis.Nil {
 				return nil, err
 			}
 			cmdVals := make([]string, len(cmds))
 			for i, c := range cmds {
 				cmdVals[i] = getCmdVal(c)
 			}
-			return &pipeRsp{Result: cmdVals}, nil
+			return &pipeRsp{Result: cmdVals, ErrNil: err == redis.Nil}, nil
 		})
-		return err
+		if err != nil {
+			return err
+		}
+		sp := rsp.(*pipeRsp)
+		if sp.ErrNil {
+			return redis.Nil
+		}
+		return nil
 	}
 }
 
