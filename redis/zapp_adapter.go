@@ -11,12 +11,10 @@ package redis
 import (
 	"fmt"
 
-	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/consts"
 	"github.com/zly-app/zapp/core"
-	"github.com/zly-app/zapp/logger"
 )
 
 // 默认组件类型
@@ -60,17 +58,9 @@ func (r *RedisCreatorAdapter) makeClient(name string) (conn.IInstance, error) {
 		return nil, fmt.Errorf("解析redis客户端配置错误: %v", err)
 	}
 
-	client, err := NewClient(conf)
+	client, err := NewClient(conf, name)
 	if err != nil {
 		return nil, fmt.Errorf("创建redis客户端失败: %v", err)
-	}
-
-	if err := InstrumentTracing(string(DefaultComponentType), name, client); err != nil {
-		logger.Log.Error("redisotel.InstrumentTracing err", err)
-	}
-
-	if err := redisotel.InstrumentMetrics(client); err != nil {
-		logger.Log.Error("redisotel.InstrumentMetrics err", err)
 	}
 	return &instance{client: client}, nil
 }
