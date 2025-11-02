@@ -52,6 +52,8 @@ type Request struct {
 	outJsonPtr  interface{} // 输出json
 	outYamlPtr  interface{} // 输出yaml
 	OutIsStream bool        `json:"OutIsStream,omitempty"` // 标记响应body是流数据
+
+	Proxy string `json:"Proxy,omitempty"` // 代理地址
 }
 
 type Response struct {
@@ -185,7 +187,8 @@ func (c cli) _do(ctx context.Context, r *Request) (*Response, error) {
 		defer cancel()
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, r.Method, r.Path, r.inStream)
+	reqCtx := saveProxy2Ctx(ctx, r.Proxy)
+	httpReq, err := http.NewRequestWithContext(reqCtx, r.Method, r.Path, r.inStream)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +265,7 @@ var rawStdDialer = &net.Dialer{
 	KeepAlive: 30 * time.Second,
 }
 var rawStdTransport http.RoundTripper = &http.Transport{
-	Proxy:                 http.ProxyFromEnvironment,
+	Proxy:                 proxyResolve,
 	DialContext:           rawStdDialer.DialContext,
 	ForceAttemptHTTP2:     true,
 	MaxIdleConns:          100,
@@ -271,7 +274,7 @@ var rawStdTransport http.RoundTripper = &http.Transport{
 	ExpectContinueTimeout: 1 * time.Second,
 }
 var rawStdTransportInsecureSkipVerify http.RoundTripper = &http.Transport{
-	Proxy:                 http.ProxyFromEnvironment,
+	Proxy:                 proxyResolve,
 	DialContext:           rawStdDialer.DialContext,
 	ForceAttemptHTTP2:     true,
 	MaxIdleConns:          100,
@@ -284,12 +287,13 @@ var rawStdTransportInsecureSkipVerify http.RoundTripper = &http.Transport{
 	},
 }
 
-var NewTransport = func(name string) http.RoundTripper {
-	return Transport{Name: name}
+var NewTransport = func(name string, insecureSkipVerify bool) http.RoundTripper {
+	return Transport{Name: name, InsecureSkipVerify: insecureSkipVerify}
 }
 
 type Transport struct {
-	Name string
+	Name               string
+	InsecureSkipVerify bool
 }
 type roundTripReq struct {
 	Method string
@@ -341,7 +345,12 @@ func (t Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	rsp, err := chain.Handle(ctx, r, func(ctx context.Context, req interface{}) (rsp interface{}, err error) {
 		r := req.(*roundTripReq)
-		httpRsp, err := rawStdTransport.RoundTrip(r.req)
+		var httpRsp *http.Response
+		if t.InsecureSkipVerify {
+			httpRsp, err = rawStdTransportInsecureSkipVerify.RoundTrip(r.req)
+		} else {
+			httpRsp, err = rawStdTransport.RoundTrip(r.req)
+		}
 		if err != nil {
 			return nil, err
 		}

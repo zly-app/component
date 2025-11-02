@@ -92,3 +92,10 @@ func WithInsecureSkipVerify() Option {
 		r.InsecureSkipVerify = true
 	}
 }
+
+// 设置代理地址. 支持 http, https, socks5, socks5h. 示例: https://127.0.0.1:1080 https://user:pwd@127.0.0.1:1080
+func WithProxy(proxy string) Option {
+	return func(r *Request) {
+		r.Proxy = proxy
+	}
+}
