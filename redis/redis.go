@@ -5,10 +5,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
+	"github.com/zly-app/zapp/logger"
 )
 
-func NewClient(conf *RedisConfig) (UniversalClient, error) {
+func NewClient(conf *RedisConfig, redisName ...string) (UniversalClient, error) {
+	name := "def"
+	if len(redisName) > 0 {
+		name = redisName[0]
+	}
+
 	err := conf.Check()
 	if err != nil {
 		return nil, fmt.Errorf("redis客户端配置错误: %v", err)
@@ -32,5 +39,13 @@ func NewClient(conf *RedisConfig) (UniversalClient, error) {
 		ConnMaxLifetime:       time.Duration(conf.MaxConnLifetime) * time.Second,
 		MaxRedirects:          conf.MaxRetries,
 	})
+
+	if err := InstrumentTracing(string(DefaultComponentType), name, client); err != nil {
+		logger.Log.Error("redisotel.InstrumentTracing err", err)
+	}
+
+	if err := redisotel.InstrumentMetrics(client); err != nil {
+		logger.Log.Error("redisotel.InstrumentMetrics err", err)
+	}
 	return client, nil
 }
