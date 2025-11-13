@@ -33,14 +33,14 @@ func WithTimeout(d time.Duration) Option {
 // 设置header
 func WithInHeader(header Header) Option {
 	return func(r *Request) {
-		r.InHeader = header
+		r.Header = header
 	}
 }
 
 // 设置uri参数
 func WithInParams(params url.Values) Option {
 	return func(r *Request) {
-		r.InParams = params
+		r.Params = params
 	}
 }
 

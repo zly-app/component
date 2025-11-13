@@ -17,6 +17,7 @@ import (
 )
 
 const DefaultComponentType = "http"
+const TraceIDHeaderName = "traceID"
 
 type Client interface {
 	Get(ctx context.Context, path string, opts ...Option) (*Response, error)
@@ -40,8 +41,8 @@ type Request struct {
 
 	InsecureSkipVerify bool `json:"InsecureSkipVerify,omitempty"` // 跳过x509校验
 
-	InHeader Header `json:"InHeader,omitempty"` // 请求head
-	InParams Values `json:"InParams,omitempty"` // 请求参数
+	Header Header `json:"Header,omitempty"`   // 请求head
+	Params Values `json:"Params,omitempty"` // 请求参数
 
 	Body       string
 	inJsonPtr  interface{} // 输入json
@@ -192,12 +193,12 @@ func (c cli) _do(ctx context.Context, r *Request) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	if r.InHeader != nil {
-		httpReq.Header = r.InHeader
+	if r.Header != nil {
+		httpReq.Header = r.Header
 	}
-	if len(r.InParams) > 0 {
+	if len(r.Params) > 0 {
 		query := httpReq.URL.Query()
-		for k, v := range r.InParams {
+		for k, v := range r.Params {
 			query[k] = append(query[k], v...)
 		}
 		httpReq.URL.RawQuery = query.Encode()
