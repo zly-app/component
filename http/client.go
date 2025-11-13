@@ -13,11 +13,11 @@ import (
 
 	"github.com/bytedance/sonic"
 	"github.com/zly-app/zapp/filter"
+	"github.com/zly-app/zapp/pkg/utils"
 	"gopkg.in/yaml.v3"
 )
 
 const DefaultComponentType = "http"
-const TraceIDHeaderName = "traceID"
 
 type Client interface {
 	Get(ctx context.Context, path string, opts ...Option) (*Response, error)
@@ -41,7 +41,7 @@ type Request struct {
 
 	InsecureSkipVerify bool `json:"InsecureSkipVerify,omitempty"` // 跳过x509校验
 
-	Header Header `json:"Header,omitempty"`   // 请求head
+	Header Header `json:"Header,omitempty"` // 请求head
 	Params Values `json:"Params,omitempty"` // 请求参数
 
 	Body       string
@@ -156,6 +156,12 @@ func (c cli) do(ctx context.Context, r *Request) (*Response, error) {
 		r.Body = string(body)
 		r.inStream = bytes.NewReader(body)
 	}
+
+	// 附加trace
+	if r.Header == nil{
+		r.Header = make(http.Header)
+	}
+	utils.Otel.SaveToHeaders(ctx, r.Header)
 
 	if isWithoutZAppFilter(ctx) {
 		sp, err := c._do(ctx, r)
@@ -336,6 +342,13 @@ func (t Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 		}
 		req.Body = io.NopCloser(bytes.NewReader(body))
 	}
+
+	// 附加trace
+	if req.Header == nil{
+		req.Header = make(http.Header)
+	}
+	utils.Otel.SaveToHeaders(ctx, req.Header)
+
 	r := &roundTripReq{
 		Method: req.Method,
 		Path:   req.URL.String(),
