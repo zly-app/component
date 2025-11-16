@@ -6,7 +6,7 @@ toolchain go1.23.10
 
 require (
 	github.com/bytedance/sonic v1.13.1
-	github.com/zly-app/zapp v1.3.23
+	github.com/zly-app/zapp v1.3.25
 	golang.org/x/net v0.26.0
 	gopkg.in/yaml.v3 v3.0.1
 )

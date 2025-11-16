@@ -158,7 +158,7 @@ func (c cli) do(ctx context.Context, r *Request) (*Response, error) {
 	}
 
 	// 附加trace
-	if r.Header == nil{
+	if r.Header == nil {
 		r.Header = make(http.Header)
 	}
 	utils.Otel.SaveToHeaders(ctx, r.Header)
@@ -176,6 +176,15 @@ func (c cli) do(ctx context.Context, r *Request) (*Response, error) {
 	meta.AddCallersSkip(1)
 
 	rsp, err := chain.Handle(ctx, r, func(ctx context.Context, req interface{}) (rsp interface{}, err error) {
+		// 附加主调信息
+		meta := filter.GetCallMeta(ctx)
+		filter.SaveCallerMeta2Header(r.Header, filter.CallerMeta{
+			CallerInstance: meta.CallerInstance(),
+			CallerEnv:      meta.CallerEnv(),
+			CallerService:  meta.CallerService(),
+			CallerMethod:   meta.CallerMethod(),
+		})
+
 		r := req.(*Request)
 		return c._do(ctx, r)
 	})
@@ -344,7 +353,7 @@ func (t Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	// 附加trace
-	if req.Header == nil{
+	if req.Header == nil {
 		req.Header = make(http.Header)
 	}
 	utils.Otel.SaveToHeaders(ctx, req.Header)
@@ -358,6 +367,15 @@ func (t Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 		req:    req,
 	}
 	rsp, err := chain.Handle(ctx, r, func(ctx context.Context, req interface{}) (rsp interface{}, err error) {
+		// 附加主调信息
+		meta := filter.GetCallMeta(ctx)
+		filter.SaveCallerMeta2Header(r.Header, filter.CallerMeta{
+			CallerInstance: meta.CallerInstance(),
+			CallerEnv:      meta.CallerEnv(),
+			CallerService:  meta.CallerService(),
+			CallerMethod:   meta.CallerMethod(),
+		})
+
 		r := req.(*roundTripReq)
 		var httpRsp *http.Response
 		if t.InsecureSkipVerify {
