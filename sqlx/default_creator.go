@@ -8,7 +8,12 @@ import (
 )
 
 var defCreator = &sqlxCreator{
-	conn: conn.NewConn(),
+	conn: conn.NewAnyConn[Client](func(name string, conn Client) {
+		db := conn.GetDB()
+		if db != nil {
+			_ = db.Close()
+		}
+	}),
 }
 
 func init() {

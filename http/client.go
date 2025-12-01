@@ -161,7 +161,7 @@ func (c cli) do(ctx context.Context, r *Request) (*Response, error) {
 	if r.Header == nil {
 		r.Header = make(http.Header)
 	}
-	utils.Otel.SaveToHeaders(ctx, r.Header)
+	utils.Trace.SaveToHeaders(ctx, r.Header)
 
 	if isWithoutZAppFilter(ctx) {
 		sp, err := c._do(ctx, r)
@@ -356,7 +356,7 @@ func (t Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if req.Header == nil {
 		req.Header = make(http.Header)
 	}
-	utils.Otel.SaveToHeaders(ctx, req.Header)
+	utils.Trace.SaveToHeaders(ctx, req.Header)
 
 	r := &roundTripReq{
 		Method: req.Method,

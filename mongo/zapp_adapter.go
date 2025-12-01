@@ -1,9 +1,7 @@
 package mongo
 
 import (
-	"context"
 	"fmt"
-	"time"
 
 	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/component/conn"
@@ -16,39 +14,28 @@ const DefaultComponentType core.ComponentType = "mongo"
 
 type Creator interface {
 	// 获取mongo客户端
-	GetClient(name string) *Client
+	GetClient(name string) (*Client, error)
 	// 获取默认mongo客户端
-	GetDefClient() *Client
-}
-
-type instance struct {
-	client         *Client
-	connectTimeout time.Duration
-}
-
-func (i *instance) Close() {
-	ctx, cancel := context.WithTimeout(context.Background(), i.connectTimeout)
-	defer cancel()
-	_ = i.client.Disconnect(ctx)
+	GetDefClient() (*Client, error)
 }
 
 type mongoCreator struct {
-	conn *conn.Conn
+	conn *conn.AnyConn[*Client]
 }
 
 func GetCreator() Creator {
 	return defCreator
 }
 
-func (r *mongoCreator) GetClient(name string) *Client {
-	return r.conn.GetInstance(r.makeClient, name).(*instance).client
+func (r *mongoCreator) GetClient(name string) (*Client, error) {
+	return r.conn.GetConn(r.makeClient, name)
 }
 
-func (r *mongoCreator) GetDefClient() *Client {
-	return r.conn.GetInstance(r.makeClient, consts.DefaultComponentName).(*instance).client
+func (r *mongoCreator) GetDefClient() (*Client, error) {
+	return r.conn.GetConn(r.makeClient, consts.DefaultComponentName)
 }
 
-func (r *mongoCreator) makeClient(name string) (conn.IInstance, error) {
+func (r *mongoCreator) makeClient(name string) (*Client, error) {
 	conf := NewMongoConfig()
 	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
 	if err != nil {
@@ -59,7 +46,7 @@ func (r *mongoCreator) makeClient(name string) (conn.IInstance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("创建mongo客户端失败: %v", err)
 	}
-	return &instance{client: client, connectTimeout: time.Duration(conf.ConnectTimeout) * time.Second}, nil
+	return client, nil
 }
 
 func (r *mongoCreator) Close() {

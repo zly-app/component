@@ -11,7 +11,7 @@
 func main() {
     app := zapp.NewApp("test")
     defer app.Exit()
-    client := es7.GetDefClient() // 获取默认客户端
+    client, _ := es7.GetDefClient() // 获取默认客户端
 }
 ```
 
@@ -26,6 +26,7 @@ components:
       Address: "http://localhost:9200"     # 地址: http://localhost1:9200,http://localhost2:9200
       UserName: ""                         # 用户名
       Password: ""                         # 密码
+      InsecureSkipVerify: false            # 使用不安全连接
       DialTimeout: 5000                    # 连接超时(毫秒
       Sniff: false                         # 开启嗅探器
       Healthcheck: true                    # 心跳检查(默认true

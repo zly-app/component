@@ -1,6 +1,7 @@
 package kafka_producer
 
 import (
+	"github.com/Shopify/sarama"
 	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/core"
@@ -8,8 +9,18 @@ import (
 )
 
 var defCreator = &kafkaProducer{
-	connSync:  conn.NewConn(),
-	connAsync: conn.NewConn(),
+	connSync: conn.NewAnyConn[Client](func(name string, conn Client) {
+		v, ok := conn.(sarama.SyncProducer)
+		if ok {
+			_ = v.Close()
+		}
+	}),
+	connAsync: conn.NewAnyConn[AsyncClient](func(name string, conn AsyncClient) {
+		v, ok := conn.(sarama.AsyncProducer)
+		if ok {
+			_ = v.Close()
+		}
+	}),
 }
 
 func init() {
@@ -29,11 +40,11 @@ func GetDefClient() Client {
 }
 
 // 获取kafka异步生产者
-func GetAsyncClient(name string) AsyncClient {
+func GetAsyncClient(name string) (AsyncClient, error) {
 	return defCreator.GetAsyncClient(name)
 }
 
 // 获取kafka异步生产者
-func GetDefAsyncClient() AsyncClient {
+func GetDefAsyncClient() (AsyncClient, error) {
 	return defCreator.GetDefAsyncClient()
 }

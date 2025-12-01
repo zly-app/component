@@ -7,7 +7,7 @@ import (
 
 	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
-	"github.com/zly-app/zapp/logger"
+	"github.com/zly-app/zapp/log"
 )
 
 func NewClient(conf *RedisConfig, redisName ...string) (UniversalClient, error) {
@@ -41,11 +41,11 @@ func NewClient(conf *RedisConfig, redisName ...string) (UniversalClient, error) 
 	})
 
 	if err := InstrumentTracing(string(DefaultComponentType), name, client); err != nil {
-		logger.Log.Error("redisotel.InstrumentTracing err", err)
+		log.Error("redisotel.InstrumentTracing err", err)
 	}
 
 	if err := redisotel.InstrumentMetrics(client); err != nil {
-		logger.Log.Error("redisotel.InstrumentMetrics err", err)
+		log.Error("redisotel.InstrumentMetrics err", err)
 	}
 	return client, nil
 }

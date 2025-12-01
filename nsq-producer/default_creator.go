@@ -9,7 +9,9 @@ import (
 )
 
 var defCreator = &nsqCreator{
-	conn: conn.NewConn(),
+	conn: conn.NewAnyConn[*nsq.Producer](func(name string, conn *nsq.Producer) {
+		conn.Stop()
+	}),
 }
 
 func init() {
@@ -19,11 +21,11 @@ func init() {
 }
 
 // 获取客户端
-func GetClient(name string) *nsq.Producer {
+func GetClient(name string) (*nsq.Producer, error) {
 	return defCreator.GetClient(name)
 }
 
 // 获取默认客户端
-func GetDefClient() *nsq.Producer {
+func GetDefClient() (*nsq.Producer, error) {
 	return defCreator.GetDefClient()
 }

@@ -20,36 +20,28 @@ import (
 
 type Creator interface {
 	// 获取nsq发布者
-	GetClient(name string) *nsq.Producer
+	GetClient(name string) (*nsq.Producer, error)
 	// 获取nsq发布者
-	GetDefClient() *nsq.Producer
-}
-
-type instance struct {
-	producer *nsq.Producer
-}
-
-func (i *instance) Close() {
-	i.producer.Stop()
+	GetDefClient() (*nsq.Producer, error)
 }
 
 type nsqCreator struct {
-	conn *conn.Conn
+	conn *conn.AnyConn[*nsq.Producer]
 }
 
 func GetCreator() Creator {
 	return defCreator
 }
 
-func (r *nsqCreator) GetClient(name string) *nsq.Producer {
-	return r.conn.GetInstance(r.makeClient, name).(*instance).producer
+func (r *nsqCreator) GetClient(name string) (*nsq.Producer, error) {
+	return r.conn.GetConn(r.makeClient, name)
 }
 
-func (r *nsqCreator) GetDefClient() *nsq.Producer {
-	return r.conn.GetInstance(r.makeClient, consts.DefaultComponentName).(*instance).producer
+func (r *nsqCreator) GetDefClient() (*nsq.Producer, error) {
+	return r.conn.GetConn(r.makeClient, consts.DefaultComponentName)
 }
 
-func (r *nsqCreator) makeClient(name string) (conn.IInstance, error) {
+func (r *nsqCreator) makeClient(name string) (*nsq.Producer, error) {
 	conf := newConfig()
 	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
 	if err != nil {
@@ -67,7 +59,7 @@ func (r *nsqCreator) makeClient(name string) (conn.IInstance, error) {
 	nsqConf.DialTimeout = time.Duration(conf.DialTimeout) * time.Millisecond
 
 	producer, err := nsq.NewProducer(conf.Address, nsqConf)
-	return &instance{producer}, err
+	return producer, err
 }
 
 func (r *nsqCreator) Close() {

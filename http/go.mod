@@ -6,7 +6,7 @@ toolchain go1.23.10
 
 require (
 	github.com/bytedance/sonic v1.13.1
-	github.com/zly-app/zapp v1.3.25
+	github.com/zly-app/zapp v1.4.0
 	golang.org/x/net v0.26.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -23,7 +23,6 @@ require (
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
-	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pelletier/go-toml v1.2.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/shirou/gopsutil/v3 v3.23.10 // indirect

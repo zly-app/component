@@ -19,7 +19,7 @@ type Creator interface {
 }
 
 type mqttProducerCreator struct {
-	conn *conn.Conn
+	conn *conn.AnyConn[Client]
 }
 
 func (m *mqttProducerCreator) GetClient(name string) Client {
@@ -27,7 +27,7 @@ func (m *mqttProducerCreator) GetClient(name string) Client {
 	if err != nil {
 		return newErrProducer(err)
 	}
-	return ins.(Client)
+	return ins
 }
 
 func (m *mqttProducerCreator) GetDefClient() Client {
@@ -36,7 +36,7 @@ func (m *mqttProducerCreator) GetDefClient() Client {
 
 func (m *mqttProducerCreator) Close() { m.conn.CloseAll() }
 
-func (m *mqttProducerCreator) makeProducer(name string) (conn.IInstance, error) {
+func (m *mqttProducerCreator) makeProducer(name string) (Client, error) {
 	conf := NewConfig()
 	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf, true)
 	if err != nil {

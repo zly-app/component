@@ -37,7 +37,7 @@ type Client interface {
 }
 
 type producerCreator struct {
-	conn *conn.Conn
+	conn *conn.AnyConn[Client]
 }
 
 func (p *producerCreator) GetClient(name string) Client {
@@ -45,7 +45,7 @@ func (p *producerCreator) GetClient(name string) Client {
 	if err != nil {
 		return newErrProducer(err)
 	}
-	return ins.(Client)
+	return ins
 }
 
 func (p *producerCreator) GetDefClient() Client {
@@ -54,7 +54,7 @@ func (p *producerCreator) GetDefClient() Client {
 
 func (p *producerCreator) Close() { p.conn.CloseAll() }
 
-func (p *producerCreator) makeProducer(name string) (conn.IInstance, error) {
+func (p *producerCreator) makeProducer(name string) (Client, error) {
 	conf := NewConfig()
 	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf, true)
 	if err != nil {
@@ -73,7 +73,6 @@ func GetCreator() Creator {
 }
 
 var _ Client = (*PulsarProducer)(nil)
-var _ conn.IInstance = (*PulsarProducer)(nil)
 
 type PulsarProducer struct {
 	name   string
@@ -210,7 +209,7 @@ func (p *PulsarProducer) Send(ctx context.Context, msg *ProducerMessage) (Messag
 		if r.msg.Properties == nil {
 			r.msg.Properties = make(map[string]string, 1)
 		}
-		utils.Otel.SaveToMap(ctx, r.msg.Properties)
+		utils.Trace.SaveToMap(ctx, r.msg.Properties)
 
 		mid, err := p.Producer.Send(ctx, r.msg)
 		sp := &sendRsp{
@@ -248,15 +247,15 @@ func (p *PulsarProducer) SendAsync(ctx context.Context, msg *ProducerMessage, fn
 		if r.msg.Properties == nil {
 			r.msg.Properties = make(map[string]string, 1)
 		}
-		utils.Otel.SaveToMap(ctx, r.msg.Properties)
+		utils.Trace.SaveToMap(ctx, r.msg.Properties)
 
-		asyncCtx, span := utils.Otel.StartSpan(ctx, "SendAsync")
+		asyncCtx, span := utils.Trace.StartSpan(ctx, "SendAsync")
 		p.Producer.SendAsync(ctx, r.msg, func(id pulsar.MessageID, message *pulsar.ProducerMessage, err error) {
 			fn(id, message, err)
 			if err == nil {
-				utils.Otel.CtxEvent(asyncCtx, "Recv", utils.OtelSpanKey("rsp").String("mid="+id.String()))
+				utils.Trace.CtxEvent(asyncCtx, "Recv", utils.OtelSpanKey("rsp").String("mid="+id.String()))
 			} else {
-				utils.Otel.CtxErrEvent(asyncCtx, "Recv", err, utils.OtelSpanKey("rsp").String("mid="+id.String()))
+				utils.Trace.CtxErrEvent(asyncCtx, "Recv", err, utils.OtelSpanKey("rsp").String("mid="+id.String()))
 			}
 			span.End()
 		})

@@ -62,7 +62,8 @@ func main() {
 	defer app.Exit()
 
 	for i := 0; i < 10; i++ {
-		kafka_producer.GetDefAsyncClient().Input() <- &kafka_producer.ProducerMessage{
+		client, _ := kafka_producer.GetDefAsyncClient()
+		client.Input() <- &kafka_producer.ProducerMessage{
 			Topic:    "test",
 			Key:      kafka_producer.StringEncoder("k" + strconv.Itoa(i)),
 			Value:    kafka_producer.StringEncoder("v" + strconv.Itoa(i)),

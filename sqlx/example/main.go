@@ -33,8 +33,8 @@ func main() {
 
 	const table = "test.test"
 
-	ctx, span := utils.Otel.StartSpan(context.Background(), "start")
-	defer utils.Otel.EndSpan(span)
+	ctx, span := utils.Trace.StartSpan(context.Background(), "start")
+	defer utils.Trace.EndSpan(span)
 
 	// 执行
 	// insertSql = INSERT INTO test.test (a,b) VALUES (?,?),(?,?),(?,?),(?,?),(?,?)

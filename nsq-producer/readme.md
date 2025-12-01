@@ -11,7 +11,7 @@
 func main() {
     app := zapp.NewApp("test")
     defer app.Exit()
-    client := nsq_producer.GetDefClient() // 获取默认生产者客户端
+    client, _ := nsq_producer.GetDefClient() // 获取默认生产者客户端
 }
 ```
 

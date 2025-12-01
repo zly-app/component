@@ -22,36 +22,28 @@ const DefaultComponentType core.ComponentType = "redis"
 
 type Creator interface {
 	// 获取redis客户端
-	GetClient(name string) UniversalClient
+	GetClient(name string) (UniversalClient, error)
 	// 获取默认redis客户端
-	GetDefClient() UniversalClient
-}
-
-type instance struct {
-	client UniversalClient
-}
-
-func (i *instance) Close() {
-	_ = i.client.Close()
+	GetDefClient() (UniversalClient, error)
 }
 
 type RedisCreatorAdapter struct {
-	conn *conn.Conn
+	conn *conn.AnyConn[UniversalClient]
 }
 
 func GetCreator() Creator {
 	return defCreator
 }
 
-func (r *RedisCreatorAdapter) GetClient(name string) UniversalClient {
-	return r.conn.GetInstance(r.makeClient, name).(*instance).client
+func (r *RedisCreatorAdapter) GetClient(name string) (UniversalClient, error) {
+	return r.conn.GetConn(r.makeClient, name)
 }
 
-func (r *RedisCreatorAdapter) GetDefClient() UniversalClient {
-	return r.conn.GetInstance(r.makeClient, consts.DefaultComponentName).(*instance).client
+func (r *RedisCreatorAdapter) GetDefClient() (UniversalClient, error) {
+	return r.conn.GetConn(r.makeClient, consts.DefaultComponentName)
 }
 
-func (r *RedisCreatorAdapter) makeClient(name string) (conn.IInstance, error) {
+func (r *RedisCreatorAdapter) makeClient(name string) (UniversalClient, error) {
 	conf := NewRedisConfig()
 	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
 	if err != nil {
@@ -62,7 +54,7 @@ func (r *RedisCreatorAdapter) makeClient(name string) (conn.IInstance, error) {
 	if err != nil {
 		return nil, fmt.Errorf("创建redis客户端失败: %v", err)
 	}
-	return &instance{client: client}, nil
+	return client, nil
 }
 
 func (r *RedisCreatorAdapter) Close() {

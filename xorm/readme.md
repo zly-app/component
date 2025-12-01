@@ -11,7 +11,7 @@ func main() {
     app := zapp.NewApp("test")
     defer app.Exit()
 
-    client := xorm.GetDefClient() // 获取默认客户端
+    client, _ := xorm.GetDefClient() // 获取默认客户端
 }
 ``` 
 

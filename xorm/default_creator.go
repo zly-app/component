@@ -8,7 +8,9 @@ import (
 )
 
 var defCreator = &xormCreator{
-	conn: conn.NewConn(),
+	conn: conn.NewAnyConn[*Engine](func(name string, conn *Engine) {
+		_ = conn.Close()
+	}),
 }
 
 func init() {
@@ -17,9 +19,9 @@ func init() {
 	})
 }
 
-func GetClient(name string) *Engine {
+func GetClient(name string) (*Engine, error) {
 	return defCreator.GetClient(name)
 }
-func GetDefClient() *Engine {
+func GetDefClient() (*Engine, error) {
 	return defCreator.GetDefClient()
 }

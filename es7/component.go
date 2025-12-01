@@ -24,36 +24,30 @@ import (
 
 type Creator interface {
 	// 获取es7客户端
-	GetClient(name string) *Client
+	GetClient(name string) (*Client, error)
 	// 获取默认es7客户端
-	GetDefClient() *Client
-}
-
-type instance struct {
-	*Client
-}
-
-func (i *instance) Close() {
-	i.Client.Stop()
+	GetDefClient() (*Client, error)
 }
 
 type ES7 struct {
-	conn *conn.Conn
+	conn *conn.AnyConn[*Client]
 }
 
 func GetCreator() Creator {
 	return defCreator
 }
 
-func (e *ES7) GetClient(name string) *Client {
-	return e.conn.GetInstance(e.makeClient, name).(*instance).Client
+func (e *ES7) GetClient(name string) (*Client, error) {
+	client, err := e.conn.GetConn(e.makeClient, name)
+	return client, err
 }
 
-func (e *ES7) GetDefClient() *Client {
-	return e.conn.GetInstance(e.makeClient, consts.DefaultComponentName).(*instance).Client
+func (e *ES7) GetDefClient() (*Client, error) {
+	client, err := e.conn.GetConn(e.makeClient, consts.DefaultComponentName)
+	return client, err
 }
 
-func (e *ES7) makeClient(name string) (conn.IInstance, error) {
+func (e *ES7) makeClient(name string) (*Client, error) {
 	conf := newConfig()
 	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
 	if err == nil {
@@ -68,7 +62,7 @@ func (e *ES7) makeClient(name string) (conn.IInstance, error) {
 		elastic7.SetSniff(conf.Sniff),
 		elastic7.SetHealthcheck(conf.HealthCheck),
 		elastic7.SetGzip(conf.GZip),
-		elastic7.SetHttpClient(&stdhttp.Client{Transport: http.NewTransport(name)}),
+		elastic7.SetHttpClient(&stdhttp.Client{Transport: http.NewTransport(name, conf.InsecureSkipVerify)}),
 	}
 	if conf.UserName != "" || conf.Password != "" {
 		opts = append(opts, elastic7.SetBasicAuth(conf.UserName, conf.Password))
@@ -89,7 +83,7 @@ func (e *ES7) makeClient(name string) (conn.IInstance, error) {
 	}
 
 	client, err := elastic7.DialContext(ctx, opts...)
-	return &instance{client}, err
+	return client, err
 }
 
 func (e *ES7) Close() {

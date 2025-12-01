@@ -8,7 +8,9 @@ import (
 )
 
 var defCreator = &RedisCreatorAdapter{
-	conn: conn.NewConn(),
+	conn: conn.NewAnyConn[UniversalClient](func(name string, conn UniversalClient) {
+		_ = conn.Close()
+	}),
 }
 
 func init() {
@@ -18,11 +20,11 @@ func init() {
 }
 
 // 获取redis客户端
-func GetClient(name string) UniversalClient {
+func GetClient(name string) (UniversalClient, error) {
 	return defCreator.GetClient(name)
 }
 
 // 获取默认redis客户端
-func GetDefClient() UniversalClient {
+func GetDefClient() (UniversalClient, error) {
 	return defCreator.GetDefClient()
 }

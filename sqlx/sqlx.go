@@ -17,7 +17,7 @@ import (
 )
 
 type sqlxCreator struct {
-	conn *conn.Conn
+	conn *conn.AnyConn[Client]
 }
 
 type Creator interface {
@@ -25,13 +25,6 @@ type Creator interface {
 	GetClient(name string) Client
 	// 获取默认客户端
 	GetDefClient() Client
-}
-type instance struct {
-	client Client
-}
-
-func (i *instance) Close() {
-	_ = i.client.GetDB().Close()
 }
 
 func GetCreator() Creator {
@@ -43,14 +36,14 @@ func (s *sqlxCreator) GetClient(name string) Client {
 	if err != nil {
 		return newErrClient(err)
 	}
-	return ins.(*instance).client
+	return ins
 }
 
 func (s *sqlxCreator) GetDefClient() Client {
 	return s.GetClient(consts.DefaultComponentName)
 }
 
-func (s *sqlxCreator) makeClient(name string) (conn.IInstance, error) {
+func (s *sqlxCreator) makeClient(name string) (Client, error) {
 	conf := newConfig()
 	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
 	if err == nil {
@@ -71,7 +64,7 @@ func (s *sqlxCreator) makeClient(name string) (conn.IInstance, error) {
 		db:   db,
 		name: name,
 	}
-	return &instance{client}, nil
+	return client, nil
 }
 
 func (s *sqlxCreator) Close() {

@@ -8,7 +8,12 @@ import (
 )
 
 var defCreator = &producerCreator{
-	conn: conn.NewConn(),
+	conn: conn.NewAnyConn[Client](func(name string, conn Client) {
+		v, ok := conn.(*PulsarProducer)
+		if ok {
+			v.Close()
+		}
+	}),
 }
 
 func init() {

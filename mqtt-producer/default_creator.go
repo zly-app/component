@@ -8,7 +8,12 @@ import (
 )
 
 var defCreator = &mqttProducerCreator{
-	conn: conn.NewConn(),
+	conn: conn.NewAnyConn[Client](func(name string, conn Client) {
+		v, ok := conn.(*MQTTProducer)
+		if ok {
+			v.Close()
+		}
+	}),
 }
 
 func init() {

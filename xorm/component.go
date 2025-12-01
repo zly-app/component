@@ -35,7 +35,7 @@ import (
 )
 
 type xormCreator struct {
-	conn *conn.Conn
+	conn *conn.AnyConn[*Engine]
 	name string
 
 	tracer   trace.Tracer
@@ -44,32 +44,24 @@ type xormCreator struct {
 
 type Creator interface {
 	// 获取
-	GetClient(name string) *Engine
+	GetClient(name string) (*Engine, error)
 	// 获取
-	GetDefClient() *Engine
-}
-
-type instance struct {
-	*Engine
-}
-
-func (i *instance) Close() {
-	_ = i.Engine.Close()
+	GetDefClient() (*Engine, error)
 }
 
 func GetCreator() Creator {
 	return defCreator
 }
 
-func (x *xormCreator) GetClient(name string) *Engine {
-	return x.conn.GetInstance(x.makeClient, name).(*instance).Engine
+func (x *xormCreator) GetClient(name string) (*Engine, error) {
+	return x.conn.GetConn(x.makeClient, name)
 }
 
-func (x *xormCreator) GetDefClient() *Engine {
-	return x.conn.GetInstance(x.makeClient, consts.DefaultComponentName).(*instance).Engine
+func (x *xormCreator) GetDefClient() (*Engine, error) {
+	return x.conn.GetConn(x.makeClient, consts.DefaultComponentName)
 }
 
-func (x *xormCreator) makeClient(name string) (conn.IInstance, error) {
+func (x *xormCreator) makeClient(name string) (*Engine, error) {
 	x.name = name
 	conf := newConfig()
 	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
@@ -104,7 +96,7 @@ func (x *xormCreator) makeClient(name string) (conn.IInstance, error) {
 		trace.WithAttributes(semconv.DBNameKey.String(name)),
 	}
 
-	return &instance{e}, nil
+	return e, nil
 }
 
 func (x *xormCreator) makeNameMapper(rule string) names.Mapper {
@@ -143,7 +135,7 @@ func (x *xormCreator) BeforeProcess(c *contexts.ContextHook) (context.Context, e
 	ctx, _ := x.tracer.Start(c.Ctx, "xorm_sql."+x.name, opts...)
 
 	args, _ := sonic.MarshalString(c.Args)
-	utils.Otel.CtxEvent(ctx, "send",
+	utils.Trace.CtxEvent(ctx, "send",
 		utils.OtelSpanKey("sql").String(c.SQL),
 		utils.OtelSpanKey("args").String(args),
 	)
@@ -151,10 +143,10 @@ func (x *xormCreator) BeforeProcess(c *contexts.ContextHook) (context.Context, e
 }
 
 func (x *xormCreator) AfterProcess(c *contexts.ContextHook) error {
-	defer utils.Otel.CtxEnd(c.Ctx)
+	defer utils.Trace.CtxEnd(c.Ctx)
 
 	if c.Err != nil {
-		utils.Otel.CtxErrEvent(c.Ctx, "recv", c.Err)
+		utils.Trace.CtxErrEvent(c.Ctx, "recv", c.Err)
 	}
 	return nil
 }
