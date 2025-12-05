@@ -33,7 +33,7 @@ func WithTimeout(d time.Duration) Option {
 // 设置header
 func WithInHeader(header Header) Option {
 	return func(r *Request) {
-		r.Header = header
+		r.Header = header.Clone()
 	}
 }
 
