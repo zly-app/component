@@ -15,11 +15,13 @@
 components:
   mqtt-producer:
     default:
-      Server: localhost:1883 # mqtt服务地址
+      Server: tcp://localhost:1883 # mqtt服务地址. 如 tcp://localhost:1883 ssl://localhost:8883
       WaitConnectedTimeMs: 5000 # 等待连接超时时间, 单位毫秒
       
       User: '' # mqtt用户名
       Password: '' # mqtt密码
+      TLSCAFile: '' # tls根证书公钥文件路径
+      InsecureSkipVerify: false # 跳过证书验证
 ```
 
 2. 添加代码
