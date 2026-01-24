@@ -26,6 +26,8 @@ components:
       Address: localhost:6379 # 地址: host1:port1,host2:port2
       UserName: "" # 用户名                     
       Password: "" # 密码
+      TLSCAFile: '' # tls根证书公钥文件路径
+      InsecureSkipVerify: false # 跳过证书验证
       DB: 0 # db, 只有非集群有效
 
       MinIdle: 2 # 最小闲置连接数
