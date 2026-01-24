@@ -1,7 +1,10 @@
 package redis
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -21,8 +24,7 @@ func NewClient(conf *RedisConfig, redisName ...string) (UniversalClient, error) 
 		return nil, fmt.Errorf("redis客户端配置错误: %v", err)
 	}
 
-	var client redis.UniversalClient
-	client = redis.NewUniversalClient(&redis.UniversalOptions{
+	clientConf := &redis.UniversalOptions{
 		Addrs:                 strings.Split(conf.Address, ","),
 		DB:                    conf.DB,
 		Username:              conf.UserName,
@@ -38,7 +40,22 @@ func NewClient(conf *RedisConfig, redisName ...string) (UniversalClient, error) 
 		ConnMaxIdleTime:       time.Duration(conf.IdleTimeout) * time.Second,
 		ConnMaxLifetime:       time.Duration(conf.MaxConnLifetime) * time.Second,
 		MaxRedirects:          conf.MaxRetries,
-	})
+	}
+	if conf.TLSCAFile != "" {
+		caCert, err := os.ReadFile(conf.TLSCAFile)
+		if err != nil {
+			return nil, fmt.Errorf("读取CA证书失败: %v", err)
+		}
+		caCertPool := x509.NewCertPool()
+		if !caCertPool.AppendCertsFromPEM(caCert) {
+			return nil, fmt.Errorf("解析CA证书失败")
+		}
+		tc := &tls.Config{RootCAs: caCertPool, InsecureSkipVerify: conf.InsecureSkipVerify}
+		clientConf.TLSConfig = tc
+	}
+
+	var client redis.UniversalClient
+	client = redis.NewUniversalClient(clientConf)
 
 	if err := InstrumentTracing(string(DefaultComponentType), name, client); err != nil {
 		log.Error("redisotel.InstrumentTracing err", err)

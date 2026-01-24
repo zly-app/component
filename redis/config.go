@@ -26,10 +26,12 @@ const (
 
 // redis配置
 type RedisConfig struct {
-	Address  string // 地址: host1:port1,host2:port2
-	UserName string // 用户名
-	Password string // 密码
-	DB       int    // db, 只有非集群有效
+	Address            string // 地址: host1:port1,host2:port2
+	UserName           string // 用户名
+	Password           string // 密码
+	TLSCAFile          string // tls根证书公钥文件路径
+	InsecureSkipVerify bool   // 跳过证书验证
+	DB                 int    // db, 只有非集群有效
 
 	MinIdle         int // 最小闲置连接数
 	MaxIdle         int // 最大闲置连接数
