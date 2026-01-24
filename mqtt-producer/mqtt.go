@@ -2,8 +2,11 @@ package mqtt_producer
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
@@ -86,6 +89,19 @@ func NewProducer(name string, conf *Config) (*MQTTProducer, error) {
 		opts.SetPassword(conf.Password) //密码
 	}
 	opts.SetConnectTimeout(time.Duration(conf.WaitConnectedTimeMs) * time.Millisecond)
+
+	if conf.TLSCAFile != "" {
+		caCert, err := os.ReadFile(conf.TLSCAFile)
+		if err != nil {
+			return nil, fmt.Errorf("读取CA证书失败: %v", err)
+		}
+		caCertPool := x509.NewCertPool()
+		if !caCertPool.AppendCertsFromPEM(caCert) {
+			return nil, fmt.Errorf("解析CA证书失败")
+		}
+		tc := &tls.Config{RootCAs: caCertPool, InsecureSkipVerify: conf.InsecureSkipVerify}
+		opts.SetTLSConfig(tc)
+	}
 
 	client := mqtt.NewClient(opts)
 	token := client.Connect()
