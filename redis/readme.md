@@ -41,4 +41,8 @@ components:
       MaxRetries: 0 # 操作尝试次数, <1 表示不重试
       ReadTimeoutSec: 5 # 超时, 秒
       WriteTimeoutSec: 5 # 超时, 秒
+
+# AI 文档
+
+> 面向 AI 助手的详细 API 参考文档，请参阅 [AI.md](./AI.md)
 ```

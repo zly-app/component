@@ -122,3 +122,7 @@ components:
 + `postgres`
 + `sqlite3`
 + `mssql`
+
+# AI 文档
+
+> 面向 AI 助手的详细 API 参考文档，请参阅 [AI.md](./AI.md)
