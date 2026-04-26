@@ -10,6 +10,7 @@ import (
 
 	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
+	"github.com/redis/go-redis/v9/maintnotifications"
 	"github.com/zly-app/zapp/log"
 )
 
@@ -40,6 +41,11 @@ func NewClient(conf *RedisConfig, redisName ...string) (UniversalClient, error) 
 		ConnMaxIdleTime:       time.Duration(conf.IdleTimeout) * time.Second,
 		ConnMaxLifetime:       time.Duration(conf.MaxConnLifetime) * time.Second,
 		MaxRedirects:          conf.MaxRetries,
+	}
+	if conf.DisableClientMaintNotifications {
+		clientConf.MaintNotificationsConfig = &maintnotifications.Config{
+			Mode: maintnotifications.ModeDisabled,
+		}
 	}
 	if conf.TLSCAFile != "" {
 		caCert, err := os.ReadFile(conf.TLSCAFile)

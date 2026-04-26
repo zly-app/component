@@ -44,6 +44,8 @@ type RedisConfig struct {
 	MaxRetries      int // 操作尝试次数, <1 表示不重试
 	ReadTimeoutSec  int // 超时, 秒
 	WriteTimeoutSec int // 超时, 秒
+
+	DisableClientMaintNotifications bool // 禁用 CLIENT MAINT_NOTIFICATIONS 命令, 用于不支持该命令的 Redis 版本
 }
 
 func NewRedisConfig() *RedisConfig {
