@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -13,6 +14,17 @@ import (
 	"github.com/redis/go-redis/v9/maintnotifications"
 	"github.com/zly-app/zapp/log"
 )
+
+// expandHomePath 将路径前缀 ~ 展开为用户主目录（跨平台：Linux 为 $HOME，Windows 为 %USERPROFILE%）。
+// 展开失败时原样返回，由后续文件读取报错。
+func expandHomePath(p string) string {
+	if p == "~" || strings.HasPrefix(p, "~/") || strings.HasPrefix(p, "~\\") {
+		if home, err := os.UserHomeDir(); err == nil {
+			return filepath.Join(home, strings.TrimPrefix(p, "~"))
+		}
+	}
+	return p
+}
 
 func NewClient(conf *RedisConfig, redisName ...string) (UniversalClient, error) {
 	name := "def"
@@ -48,7 +60,7 @@ func NewClient(conf *RedisConfig, redisName ...string) (UniversalClient, error) 
 		}
 	}
 	if conf.TLSCAFile != "" {
-		caCert, err := os.ReadFile(conf.TLSCAFile)
+		caCert, err := os.ReadFile(expandHomePath(conf.TLSCAFile))
 		if err != nil {
 			return nil, fmt.Errorf("读取CA证书失败: %v", err)
 		}
