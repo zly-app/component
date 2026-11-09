@@ -49,7 +49,7 @@ func NewClient(conf *RedisConfig, _ ...string) (UniversalClient, error) {
 		ConnMaxLifetime:       time.Duration(conf.MaxConnLifetime) * time.Second,
 		MaxRedirects:          conf.MaxRetries,
 	}
-	if conf.DisableClientMaintNotifications {
+	if !conf.EnableClientMaintNotifications {
 		clientConf.MaintNotificationsConfig = &maintnotifications.Config{
 			Mode: maintnotifications.ModeDisabled,
 		}

@@ -45,7 +45,7 @@ type RedisConfig struct {
 	ReadTimeoutSec  int // 超时, 秒
 	WriteTimeoutSec int // 超时, 秒
 
-	DisableClientMaintNotifications bool // 禁用 CLIENT MAINT_NOTIFICATIONS 命令, 用于不支持该命令的 Redis 版本
+	EnableClientMaintNotifications bool // 启用 CLIENT MAINT_NOTIFICATIONS 命令。默认关闭：该命令需要 redis 7.x + RESP3，老版本或部分云 Redis 会返回 unknown subcommand
 }
 
 func NewRedisConfig() *RedisConfig {
