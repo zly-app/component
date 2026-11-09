@@ -17,9 +17,9 @@ import (
 
 	elastic7 "github.com/olivere/elastic/v7"
 	"github.com/zly-app/component/http"
-	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/consts"
+	"github.com/zly-app/zapp/core"
 )
 
 type Creator interface {
@@ -27,14 +27,13 @@ type Creator interface {
 	GetClient(name string) (*Client, error)
 	// 获取默认es7客户端
 	GetDefClient() (*Client, error)
+	// Close 关闭全部客户端
+	Close()
 }
 
 type ES7 struct {
+	app  core.IApp
 	conn *conn.AnyConn[*Client]
-}
-
-func GetCreator() Creator {
-	return defCreator
 }
 
 func (e *ES7) GetClient(name string) (*Client, error) {
@@ -49,7 +48,7 @@ func (e *ES7) GetDefClient() (*Client, error) {
 
 func (e *ES7) makeClient(name string) (*Client, error) {
 	conf := newConfig()
-	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
+	err := e.app.GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
 	if err == nil {
 		err = conf.Check()
 	}

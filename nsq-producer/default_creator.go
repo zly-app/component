@@ -2,30 +2,16 @@ package nsq_producer
 
 import (
 	"github.com/nsqio/go-nsq"
-	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/core"
-	"github.com/zly-app/zapp/handler"
 )
 
-var defCreator = &nsqCreator{
-	conn: conn.NewAnyConn[*nsq.Producer](func(name string, conn *nsq.Producer) {
-		conn.Stop()
-	}),
-}
-
-func init() {
-	zapp.AddHandler(zapp.AfterCloseComponent, func(_ core.IApp, _ handler.HandlerType) {
-		defCreator.Close()
-	})
-}
-
-// 获取客户端
-func GetClient(name string) (*nsq.Producer, error) {
-	return defCreator.GetClient(name)
-}
-
-// 获取默认客户端
-func GetDefClient() (*nsq.Producer, error) {
-	return defCreator.GetDefClient()
+// NewCreator 创建 nsq 发布者集合。实例由组合根持有并负责 Close，不再有包级单例。
+func NewCreator(app core.IApp) Creator {
+	return &nsqCreator{
+		app: app,
+		conn: conn.NewAnyConn[*nsq.Producer](func(name string, conn *nsq.Producer) {
+			conn.Stop()
+		}),
+	}
 }

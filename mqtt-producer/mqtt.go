@@ -12,9 +12,9 @@ import (
 	"time"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/consts"
+	"github.com/zly-app/zapp/core"
 	"github.com/zly-app/zapp/filter"
 )
 
@@ -32,9 +32,12 @@ func expandHomePath(p string) string {
 type Creator interface {
 	GetClient(name string) Client
 	GetDefClient() Client
+	// Close 关闭全部生产者
+	Close()
 }
 
 type mqttProducerCreator struct {
+	app  core.IApp
 	conn *conn.AnyConn[Client]
 }
 
@@ -54,12 +57,12 @@ func (m *mqttProducerCreator) Close() { m.conn.CloseAll() }
 
 func (m *mqttProducerCreator) makeProducer(name string) (Client, error) {
 	conf := NewConfig()
-	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf, true)
+	err := m.app.GetConfig().ParseComponentConfig(DefaultComponentType, name, conf, true)
 	if err != nil {
 		return nil, fmt.Errorf("获取组件<%s.%s>配置失败: %v", DefaultComponentType, name, err)
 	}
 
-	producer, err := NewProducer(name, conf)
+	producer, err := NewProducer(name, conf, m.app)
 	if err != nil {
 		return nil, err
 	}
@@ -73,11 +76,8 @@ type Client interface {
 	SendAsync(ctx context.Context, msg *ProducerMessage, callback func(error))
 }
 
-func GetCreator() Creator {
-	return defCreator
-}
-
 type MQTTProducer struct {
+	app    core.IApp
 	name   string
 	conf   *Config
 	client mqtt.Client
@@ -90,7 +90,7 @@ type ProducerMessage struct {
 	Payload  string // 消息负载
 }
 
-func NewProducer(name string, conf *Config) (*MQTTProducer, error) {
+func NewProducer(name string, conf *Config, app core.IApp) (*MQTTProducer, error) {
 	if err := conf.Check(); err != nil {
 		return nil, fmt.Errorf("配置检查失败: %v", err)
 	}
@@ -127,6 +127,7 @@ func NewProducer(name string, conf *Config) (*MQTTProducer, error) {
 	}
 
 	return &MQTTProducer{
+		app:    app,
 		name:   name,
 		conf:   conf,
 		client: client,
@@ -159,7 +160,7 @@ func (p *MQTTProducer) SendAsync(ctx context.Context, msg *ProducerMessage, call
 		return nil, nil
 	})
 
-	zapp.App().GetComponent().GetGPool().Go(func() error {
+	p.app.GetComponent().GetGPool().Go(func() error {
 		waitOk := token.WaitTimeout(time.Duration(p.conf.WaitConnectedTimeMs) * time.Millisecond)
 		if !waitOk {
 			return fmt.Errorf("send to mqtt topic: %v timeout", msg.Topic)

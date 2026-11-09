@@ -20,8 +20,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"   // mysql
 	_ "github.com/lib/pq"                // postgres
 	_ "github.com/mattn/go-sqlite3"      // sqlite
-	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/consts"
+	"github.com/zly-app/zapp/core"
 	"github.com/zly-app/zapp/pkg/utils"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -35,6 +35,7 @@ import (
 )
 
 type xormCreator struct {
+	app  core.IApp
 	conn *conn.AnyConn[*Engine]
 	name string
 
@@ -47,10 +48,8 @@ type Creator interface {
 	GetClient(name string) (*Engine, error)
 	// 获取
 	GetDefClient() (*Engine, error)
-}
-
-func GetCreator() Creator {
-	return defCreator
+	// Close 关闭全部引擎
+	Close()
 }
 
 func (x *xormCreator) GetClient(name string) (*Engine, error) {
@@ -64,7 +63,7 @@ func (x *xormCreator) GetDefClient() (*Engine, error) {
 func (x *xormCreator) makeClient(name string) (*Engine, error) {
 	x.name = name
 	conf := newConfig()
-	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
+	err := x.app.GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
 	if err == nil {
 		err = conf.Check()
 	}

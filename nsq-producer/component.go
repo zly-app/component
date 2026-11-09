@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/nsqio/go-nsq"
-	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/consts"
+	"github.com/zly-app/zapp/core"
 )
 
 type Creator interface {
@@ -23,14 +23,13 @@ type Creator interface {
 	GetClient(name string) (*nsq.Producer, error)
 	// 获取nsq发布者
 	GetDefClient() (*nsq.Producer, error)
+	// Close 关闭全部发布者
+	Close()
 }
 
 type nsqCreator struct {
+	app  core.IApp
 	conn *conn.AnyConn[*nsq.Producer]
-}
-
-func GetCreator() Creator {
-	return defCreator
 }
 
 func (r *nsqCreator) GetClient(name string) (*nsq.Producer, error) {
@@ -43,7 +42,7 @@ func (r *nsqCreator) GetDefClient() (*nsq.Producer, error) {
 
 func (r *nsqCreator) makeClient(name string) (*nsq.Producer, error) {
 	conf := newConfig()
-	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
+	err := r.app.GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
 	if err != nil {
 		return nil, err
 	}

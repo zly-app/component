@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/consts"
+	"github.com/zly-app/zapp/core"
 	"golang.org/x/net/proxy"
 )
 
@@ -21,6 +21,8 @@ type Creator interface {
 	GetAsyncClient(name string) (AsyncClient, error)
 	// 获取kafka异步生产者
 	GetDefAsyncClient() (AsyncClient, error)
+	// Close 关闭全部生产者
+	Close()
 }
 
 // 同步生产者
@@ -37,12 +39,9 @@ type AsyncClient interface {
 }
 
 type kafkaProducer struct {
+	app       core.IApp
 	connSync  *conn.AnyConn[Client]
 	connAsync *conn.AnyConn[AsyncClient]
-}
-
-func GetCreator() Creator {
-	return defCreator
 }
 
 func (k *kafkaProducer) GetClient(name string) Client {
@@ -74,7 +73,7 @@ func (k *kafkaProducer) GetDefAsyncClient() (AsyncClient, error) {
 // 生成配置
 func (k *kafkaProducer) makeConf(name string) (*Config, error) {
 	conf := newConfig()
-	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
+	err := k.app.GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
 	if err != nil {
 		return nil, err
 	}

@@ -31,6 +31,10 @@ func main() {
 	app := zapp.NewApp("zapp.test.sqlx")
 	defer app.Exit()
 
+	creator := sqlx.NewCreator(app)
+	client := creator.GetDefClient()
+	defer creator.Close()
+
 	const table = "test.test"
 
 	ctx, span := utils.Trace.StartSpan(context.Background(), "start")
@@ -46,10 +50,10 @@ func main() {
 		{"a": 4, "b": "v4"},
 		{"a": 5, "b": "v5"},
 	})
-	_, _ = sqlx.GetDefClient().Exec(ctx, insertSql, vals...)
+	_, _ = client.Exec(ctx, insertSql, vals...)
 
 	// 事务
-	_ = sqlx.GetDefClient().Transaction(ctx, func(ctx context.Context, tx sqlx.Tx) error {
+	_ = client.Transaction(ctx, func(ctx context.Context, tx sqlx.Tx) error {
 		// queryRowCond = SELECT a,b FROM test.test WHERE (id=?)
 		// vals = [1]
 		queryRowCond, vals, _ := builder.BuildSelect(table, map[string]interface{}{"id": 1}, []string{"a", "b"})
@@ -61,7 +65,7 @@ func main() {
 	})
 
 	// 事务
-	_ = sqlx.GetDefClient().TransactionX(ctx, func(ctx context.Context, txx sqlx.Txx) error {
+	_ = client.TransactionX(ctx, func(ctx context.Context, txx sqlx.Txx) error {
 		m := Model{}
 		_ = txx.FindOne(ctx, &m, `select * from test.test where id = ?`, 1)
 		var id int

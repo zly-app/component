@@ -9,9 +9,9 @@ import (
 	"github.com/apache/pulsar-client-go/pulsar"
 	"github.com/apache/pulsar-client-go/pulsar/log"
 	"github.com/sirupsen/logrus"
-	"github.com/zly-app/zapp"
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/consts"
+	"github.com/zly-app/zapp/core"
 	"github.com/zly-app/zapp/filter"
 	"github.com/zly-app/zapp/pkg/utils"
 )
@@ -20,6 +20,8 @@ import (
 type Creator interface {
 	GetClient(name string) Client
 	GetDefClient() Client
+	// Close 关闭全部生产者
+	Close()
 }
 
 // Pulsar生产者客户端
@@ -37,6 +39,7 @@ type Client interface {
 }
 
 type producerCreator struct {
+	app  core.IApp
 	conn *conn.AnyConn[Client]
 }
 
@@ -56,7 +59,7 @@ func (p *producerCreator) Close() { p.conn.CloseAll() }
 
 func (p *producerCreator) makeProducer(name string) (Client, error) {
 	conf := NewConfig()
-	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf, true)
+	err := p.app.GetConfig().ParseComponentConfig(DefaultComponentType, name, conf, true)
 	if err != nil {
 		return nil, fmt.Errorf("获取组件<%s.%s>配置失败: %v", DefaultComponentType, name, err)
 	}
@@ -68,9 +71,7 @@ func (p *producerCreator) makeProducer(name string) (Client, error) {
 	return producer, nil
 }
 
-func GetCreator() Creator {
-	return defCreator
-}
+
 
 var _ Client = (*PulsarProducer)(nil)
 

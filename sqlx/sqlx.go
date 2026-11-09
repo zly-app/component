@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/zly-app/zapp"
 
 	_ "github.com/ClickHouse/clickhouse-go" // clickhosue
 	_ "github.com/denisenkom/go-mssqldb"    // mssql
@@ -14,9 +13,11 @@ import (
 	_ "github.com/mattn/go-sqlite3"         // sqlite
 	"github.com/zly-app/zapp/component/conn"
 	"github.com/zly-app/zapp/consts"
+	"github.com/zly-app/zapp/core"
 )
 
 type sqlxCreator struct {
+	app  core.IApp
 	conn *conn.AnyConn[Client]
 }
 
@@ -25,10 +26,8 @@ type Creator interface {
 	GetClient(name string) Client
 	// 获取默认客户端
 	GetDefClient() Client
-}
-
-func GetCreator() Creator {
-	return defCreator
+	// Close 关闭全部客户端
+	Close()
 }
 
 func (s *sqlxCreator) GetClient(name string) Client {
@@ -45,7 +44,7 @@ func (s *sqlxCreator) GetDefClient() Client {
 
 func (s *sqlxCreator) makeClient(name string) (Client, error) {
 	conf := newConfig()
-	err := zapp.App().GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
+	err := s.app.GetConfig().ParseComponentConfig(DefaultComponentType, name, conf)
 	if err == nil {
 		err = conf.Check()
 	}
