@@ -3,11 +3,8 @@ package http
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"io"
-	"net"
 	"net/http"
 	"time"
 
@@ -31,6 +28,12 @@ type Client interface {
 
 type cli struct {
 	Name string
+	std  *stdRuntime
+}
+
+// NewClient 创建 http 客户端。每个客户端持有独立的连接池。
+func NewClient(name string) Client {
+	return &cli{Name: name, std: newStdRuntime()}
 }
 
 type Request struct {
@@ -66,20 +69,6 @@ type Response struct {
 	ContentLength int64
 	Header        Header
 	Uncompressed  bool `json:"Uncompressed,omitempty"`
-}
-
-var NewClient = func(name string) Client {
-	c := cli{
-		Name: name,
-	}
-	return c
-}
-
-var rawStdClient = &http.Client{
-	Transport: rawStdTransport,
-}
-var rawStdClientInsecureSkipVerify = &http.Client{
-	Transport: rawStdTransportInsecureSkipVerify,
 }
 
 func (c cli) Get(ctx context.Context, path string, opts ...Option) (*Response, error) {
@@ -221,9 +210,9 @@ func (c cli) _do(ctx context.Context, r *Request) (*Response, error) {
 
 	var httpRsp *http.Response
 	if r.InsecureSkipVerify {
-		httpRsp, err = rawStdClientInsecureSkipVerify.Do(httpReq)
+		httpRsp, err = c.std.insecure.RoundTrip(httpReq)
 	} else {
-		httpRsp, err = rawStdClient.Do(httpReq)
+		httpRsp, err = c.std.transport.RoundTrip(httpReq)
 	}
 	if err != nil {
 		return nil, err
@@ -273,43 +262,16 @@ func (c cli) unmarshalStream(ctx context.Context, r *Request, sp *Response) erro
 	return nil
 }
 
-var StdClient = newStdClient()
-var StdTransport = newStdTransport()
-
-var rawStdDialer = &net.Dialer{
-	Timeout:   30 * time.Second,
-	KeepAlive: 30 * time.Second,
-}
-var rawStdTransport http.RoundTripper = &http.Transport{
-	Proxy:                 proxyResolve,
-	DialContext:           rawStdDialer.DialContext,
-	ForceAttemptHTTP2:     true,
-	MaxIdleConns:          100,
-	IdleConnTimeout:       90 * time.Second,
-	TLSHandshakeTimeout:   10 * time.Second,
-	ExpectContinueTimeout: 1 * time.Second,
-}
-var rawStdTransportInsecureSkipVerify http.RoundTripper = &http.Transport{
-	Proxy:                 proxyResolve,
-	DialContext:           rawStdDialer.DialContext,
-	ForceAttemptHTTP2:     true,
-	MaxIdleConns:          100,
-	IdleConnTimeout:       90 * time.Second,
-	TLSHandshakeTimeout:   10 * time.Second,
-	ExpectContinueTimeout: 1 * time.Second,
-	TLSClientConfig: &tls.Config{
-		InsecureSkipVerify: true, // 跳过tls校验
-		RootCAs:            x509.NewCertPool(),
-	},
+// NewTransport 创建带 zapp filter 的 RoundTripper。
+func NewTransport(name string, insecureSkipVerify bool) http.RoundTripper {
+	return &Transport{name: name, insecureSkipVerify: insecureSkipVerify, std: newStdRuntime()}
 }
 
-var NewTransport = func(name string, insecureSkipVerify bool) http.RoundTripper {
-	return Transport{Name: name, InsecureSkipVerify: insecureSkipVerify}
-}
-
+// Transport 是带 zapp filter 的 RoundTripper。
 type Transport struct {
-	Name               string
-	InsecureSkipVerify bool
+	name               string
+	insecureSkipVerify bool
+	std                *stdRuntime
 }
 type roundTripReq struct {
 	Method string
@@ -334,10 +296,10 @@ type roundTripResponse struct {
 
 func (t Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if isWithoutZAppFilter(req.Context()) {
-		return rawStdTransport.RoundTrip(req)
+		return t.std.transport.RoundTrip(req)
 	}
 
-	ctx, chain := filter.GetClientFilter(req.Context(), DefaultComponentType, t.Name, req.Method)
+	ctx, chain := filter.GetClientFilter(req.Context(), DefaultComponentType, t.name, req.Method)
 	meta := filter.GetCallMeta(ctx)
 	meta.AddCallersSkip(1)
 
@@ -378,10 +340,10 @@ func (t Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 		r := req.(*roundTripReq)
 		var httpRsp *http.Response
-		if t.InsecureSkipVerify {
-			httpRsp, err = rawStdTransportInsecureSkipVerify.RoundTrip(r.req)
+		if t.insecureSkipVerify {
+			httpRsp, err = t.std.insecure.RoundTrip(r.req)
 		} else {
-			httpRsp, err = rawStdTransport.RoundTrip(r.req)
+			httpRsp, err = t.std.transport.RoundTrip(r.req)
 		}
 		if err != nil {
 			return nil, err
@@ -412,17 +374,12 @@ func (t Transport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return rsp.(*roundTripResponse).rsp, nil
 }
 
-func newStdClient() *http.Client {
-	return &http.Client{Transport: StdTransport}
-}
-func newStdTransport() http.RoundTripper {
-	return Transport{Name: "std"}
-}
-
-// 替换http包的client和transport. 调用此函数前必须已执行了 zapp.NewApp
+// ReplaceStd 替换 http 包的 DefaultClient 与 DefaultTransport。
+// 调用此函数前必须已执行 zapp.NewApp：新的 Transport 会走 zapp 的 client filter。
 func ReplaceStd() {
-	http.DefaultClient = StdClient
-	http.DefaultTransport = StdTransport
+	t := &Transport{name: "std", std: newStdRuntime()}
+	http.DefaultTransport = t
+	http.DefaultClient = &http.Client{Transport: t}
 }
 
 type withoutFilterKey struct{}

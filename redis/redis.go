@@ -26,12 +26,7 @@ func expandHomePath(p string) string {
 	return p
 }
 
-func NewClient(conf *RedisConfig, redisName ...string) (UniversalClient, error) {
-	name := "def"
-	if len(redisName) > 0 {
-		name = redisName[0]
-	}
-
+func NewClient(conf *RedisConfig, _ ...string) (UniversalClient, error) {
 	err := conf.Check()
 	if err != nil {
 		return nil, fmt.Errorf("redis客户端配置错误: %v", err)
@@ -74,7 +69,13 @@ func NewClient(conf *RedisConfig, redisName ...string) (UniversalClient, error) 
 
 	var client redis.UniversalClient
 	client = redis.NewUniversalClient(clientConf)
+	return client, nil
+}
 
+// InstrumentClient 给客户端挂 tracing 与 metrics hook。
+// 只有接入 zapp 运行时才需要调用：tracing hook 依赖 zapp filter 全局，
+// 独立使用（未初始化 zapp）时不挂，避免隐式依赖。
+func InstrumentClient(name string, client UniversalClient) {
 	if err := InstrumentTracing(string(DefaultComponentType), name, client); err != nil {
 		log.Error("redisotel.InstrumentTracing err", err)
 	}
@@ -82,5 +83,4 @@ func NewClient(conf *RedisConfig, redisName ...string) (UniversalClient, error) 
 	if err := redisotel.InstrumentMetrics(client); err != nil {
 		log.Error("redisotel.InstrumentMetrics err", err)
 	}
-	return client, nil
 }

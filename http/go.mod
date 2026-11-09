@@ -1,13 +1,10 @@
 module github.com/zly-app/component/http
 
-go 1.23
-
-toolchain go1.23.10
+go 1.24.1
 
 require (
 	github.com/bytedance/sonic v1.15.5
-	github.com/zly-app/zapp v1.4.0
-	golang.org/x/net v0.26.0
+	github.com/zly-app/zapp v1.4.6
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -43,8 +40,9 @@ require (
 	go.uber.org/multierr v1.5.0 // indirect
 	go.uber.org/zap v1.16.0 // indirect
 	golang.org/x/arch v0.0.0-20210923205945-b76863e36670 // indirect
-	golang.org/x/sys v0.22.0 // indirect
-	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/net v0.38.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 	gopkg.in/ini.v1 v1.51.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
